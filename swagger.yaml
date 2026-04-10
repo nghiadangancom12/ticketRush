@@ -1,0 +1,417 @@
+openapi: 3.0.0
+info:
+  title: TicketRush API
+  description: Hệ thống phân phối vé sự kiện và quản lý đặt chỗ thời gian thực
+  version: 1.0.0
+  contact:
+    name: Support Team
+tags:
+  - name: Authentication
+    description: User registration and login
+  - name: Users  
+    description: User profile and role management
+  - name: Events
+    description: Event management
+  - name: Seats
+    description: Seat reservation and booking
+  - name: Customers
+    description: Customer purchase history
+  - name: Admin
+    description: Admin dashboard and analytics
+servers:
+  - url: http://localhost:3000
+    description: Local Development
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Sử dụng JWT token từ Authorization header
+    
+    cookieAuth:
+      type: apiKey
+      in: cookie
+      name: jwt
+      description: |
+        🍪 HttpOnly Cookie Authentication
+        
+        ✅ Quá trình:
+        1. Gọi /api/auth/login để nhận HttpOnly cookie
+        2. Cookie tự động được gửi kèm theo mỗi request (nếu credentials được bật)
+        3. Các endpoint sẽ xác thực dựa trên cookie JWT này
+        
+        📌 Lưu ý:
+        - HttpOnly Cookie không thể truy cập từ JavaScript (XSS protection)
+        - Browser sẽ tự động gửi cookie giữa các request cùng origin
+        - Khi test cross-domain, cần bật CORS credentials
+        
+        🔒 Security attributes:
+        - HttpOnly: true (chống XSS)
+        - Secure: true (chỉ qua HTTPS)
+        - SameSite: None (cho phép cross-domain)
+
+paths:
+  /api/auth/register:
+    post:
+      tags: [Authentication]
+      summary: Đăng ký tài khoản mới
+      description: Tạo tài khoản mới với vai trò CUSTOMER (user bình thường)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - email
+                - password
+                - full_name
+              properties:
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+                  minLength: 6
+                full_name:
+                  type: string
+      responses:
+        '201':
+          description: Đăng ký thành công
+        '400':
+          description: Email đã tồn tại hoặc dữ liệu không hợp lệ
+
+  /api/auth/login:
+    post:
+      tags: [Authentication]
+      summary: Đăng nhập
+      description: |
+        Đăng nhập và nhận JWT token qua HttpOnly Cookie
+        
+        🔐 Cookie sẽ được tự động gửi:
+        - HttpOnly: Không thể truy cập từ JavaScript
+        - Secure: Chỉ qua HTTPS
+        - SameSite: None (cho phép cross-domain)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - email
+                - password
+              properties:
+                email:
+                  type: string
+                  format: email
+                  example: "user@example.com"
+                password:
+                  type: string
+                  example: "password123"
+      responses:
+        '200':
+          description: Đăng nhập thành công và nhận HttpOnly Cookie
+          headers:
+            Set-Cookie:
+              schema:
+                type: string
+                example: jwt=eyJhbGc...; HttpOnly; Secure; SameSite=None; Path=/; Max-Age=86400
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: object
+                    properties:
+                      user:
+                        type: object
+                      accessToken:
+                        type: string
+                        description: Token cũng được trả về trong body (tuỳ chọn)
+        '404':
+          description: Người dùng không tồn tại
+        '401':
+          description: Mật khẩu không đúng
+
+  /api/auth/logout:
+    post:
+      tags: [Authentication]
+      summary: Đăng xuất
+      description: |
+        Đăng xuất và xóa HttpOnly Cookie
+        
+        ✅ Cookie sẽ bị xóa (hết hạn ngay lập tức)
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      responses:
+        '200':
+          description: Đăng xuất thành công
+          headers:
+            Set-Cookie:
+              schema:
+                type: string
+                example: jwt=loggedout; HttpOnly; Secure; SameSite=None; Path=/; Max-Age=10
+
+  /api/users/me:
+    get:
+      tags: [Users]
+      summary: Lấy profile người dùng hiện tại
+      description: |
+        ✅ Xác thực bằng HttpOnly Cookie hoặc Bearer Token
+        
+        Các cách gửi token:
+        1. 🍪 HttpOnly Cookie: Tự động được gửi kèm request
+        2. 🔐 Bearer Token: Gửi qua Authorization header
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      responses:
+        '200':
+          description: Lấy profile thành công
+    patch:
+      tags: [Users]
+      summary: Cập nhật profile
+      description: Cập nhật avatar, họ tên, ngày sinh, giới tính (xác thực bằng Cookie/Bearer token)
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                avatar_url:
+                  type: string
+                full_name:
+                  type: string
+                date_of_birth:
+                  type: string
+                  format: date
+                gender:
+                  type: string
+                  enum: [MALE, FEMALE, OTHER]
+      responses:
+        '200':
+          description: Cập nhật thành công
+
+  /api/users/{userId}/grant-admin:
+    patch:
+      tags: [Users]
+      summary: Cấp quyền admin (Admin only)
+      description: Chỉ admin mới có thể cấp quyền admin cho người khác
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Cấp quyền thành công
+        '403':
+          description: Chỉ admin mới có thể cấp quyền
+
+  /api/users/{userId}/revoke-admin:
+    patch:
+      tags: [Users]
+      summary: Hủy quyền admin (Admin only)
+      description: Hạ cấp người dùng từ admin xuống customer
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Hủy quyền thành công
+        '403':
+          description: Chỉ admin mới có thể hủy quyền
+
+  /api/events:
+    get:
+      tags: [Events]
+      summary: Lấy danh sách tất cả sự kiện
+      responses:
+        '200':
+          description: Lấy danh sách thành công
+    post:
+      tags: [Events]
+      summary: Tạo sự kiện mới (Admin only)
+      description: Tạo sự kiện với các khu vực (zone) và chỗ ngồi
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - title
+                - start_time
+                - location
+                - zones
+              properties:
+                title:
+                  type: string
+                description:
+                  type: string
+                start_time:
+                  type: string
+                  format: date-time
+                location:
+                  type: string
+                zones:
+                  type: array
+                  items:
+                    type: object
+      responses:
+        '201':
+          description: Tạo sự kiện thành công
+        '403':
+          description: Chỉ admin mới có thể tạo sự kiện
+
+  /api/events/{id}:
+    get:
+      tags: [Events]
+      summary: Lấy chi tiết sự kiện
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Lấy thành công
+        '404':
+          description: Sự kiện không tồn tại
+
+  /api/events/{id}/image:
+    patch:
+      tags: [Events]
+      summary: Cập nhật hình ảnh sự kiện (Admin only)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - image_url
+              properties:
+                image_url:
+                  type: string
+      responses:
+        '200':
+          description: Cập nhật ảnh thành công
+        '403':
+          description: Chỉ admin mới có thể cập nhật ảnh
+
+  /api/seats/hold:
+    post:
+      tags: [Seats]
+      summary: Giữ ghế để đặt hàng
+      description: Giữ ghế trong 1 phút để hoàn tất thanh toán
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - eventId
+                - seatIds
+              properties:
+                eventId:
+                  type: string
+                seatIds:
+                  type: array
+                  items:
+                    type: string
+      responses:
+        '200':
+          description: Giữ ghế thành công
+        '412':
+          description: Một số ghế không còn trống
+
+  /api/seats/checkout:
+    post:
+      tags: [Seats]
+      summary: Hoàn tất thanh toán
+      description: Xác nhận mua các ghế đã giữ và tạo đơn hàng
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - eventId
+              properties:
+                eventId:
+                  type: string
+      responses:
+        '201':
+          description: Thanh toán thành công
+
+  /api/customers/purchaseHistory:
+    get:
+      tags: [Customers]
+      summary: Lấy lịch sử mua hàng
+      description: Xem tất cả các đơn hàng và vé đã mua
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Lấy lịch sử thành công
+
+  /api/admin/dashboard:
+    get:
+      tags: [Admin]
+      summary: Thống kê admin (Admin only)
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Lấy thống kê thành công
+        '403':
+          description: Chỉ admin mới có thể xem
+
+  /api/admin/customer-analytics:
+    get:
+      tags: [Admin]
+      summary: Phân tích khách hàng (Admin only)
+      description: Thống kê chi tiêu và hành vi khách hàng
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Lấy phân tích thành công
+        '403':
+          description: Chỉ admin mới có thể xem
