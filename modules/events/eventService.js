@@ -8,79 +8,47 @@ class EventService {
 
   async getById(id) {
     const event = await eventRepository.findById(id);
-    if (!event) throw new AppError('Event not found', 404);
+    if (!event) throw new AppError('Sự kiện không tồn tại', 404);
     return event;
   }
 
-  async create({ title, description, start_time, location, zones, adminId }) {// 1. KIỂM TRA TỔNG QUAN
-    if (!title || !start_time || !location || !zones?.length) {
-      throw new AppError('Thiếu thông tin sự kiện hoặc khu vực ghế.', 400);
-    }
+  async create({ title, description, start_time, location, zones, adminId }) {
+    // Không cần Bước 1 & 2 nữa. Nếu lọt được vào đây, dữ liệu CHẮC CHẮN ĐÃ CHUẨN 100%.
 
-    // 2. TIỀN KIỂM TRA (PRE-VALIDATION): Dò lỗi trước khi ghi vào DB
-    // Mục đích: Nếu dữ liệu rác, chặn ngay lập tức để không tạo Event lỗi.
-    for (const z of zones) {
-      if (!z.name) throw new AppError('Tên khu vực (zone) không được để trống.', 400);
-      
-      const parsedPrice = parseFloat(z.price);
-      if (isNaN(parsedPrice) || parsedPrice < 0) {
-        throw new AppError(`Giá tiền của khu vực ${z.name} không hợp lệ.`, 400);
+    // 1. Map dữ liệu Zones và Seats
+    const zonesDataToInsert = zones.map(z => ({
+      name: z.name,
+      price: z.price, // Zod đã ép sẵn thành số Float
+      total_seats: z.seats.length,
+      seats: {
+        create: z.seats.map(s => ({
+          row_label: s.row_label,
+          seat_number: s.seat_number, // Zod đã ép sẵn thành số Int
+          status: 'AVAILABLE'
+        }))
       }
+    }));
 
-      const seatsArray = z.seats || [];
-      for (const s of seatsArray) {
-        const parsedSeatNumber = parseInt(s.seat_number, 10);
-        if (!s.row_label || isNaN(parsedSeatNumber)) {
-          throw new AppError(`Dữ liệu ghế trong khu ${z.name} bị sai định dạng (row_label hoặc seat_number).`, 400);
-        }
-      }
-    }
-//3
-    const zonesDataToInsert = zones.map(z => {
-      const seatsArray = z.seats || [];
-      
-      return {
-        name: z.name,
-        price: parseFloat(z.price),
-        total_seats: seatsArray.length,
-        // Yêu cầu Prisma tự động tạo luôn các ghế thuộc về Zone này
-        seats: {
-          create: seatsArray.map(s => ({
-            row_label: s.row_label,
-            seat_number: parseInt(s.seat_number, 10),
-            status: 'AVAILABLE'
-          }))
-        }
-      };
-    });
-
-    // ==========================================
-    // 4. GỌI REPOSITORY LƯU TẤT CẢ TRONG 1 LẦN (TRANSACTION)
-    // ==========================================
-    // Nếu có bất kỳ lỗi gì xảy ra ở đây, Prisma sẽ tự động Rollback (Hủy) toàn bộ,
-    // đảm bảo không bao giờ có Event rác bị sinh ra.
+    // 2. Gọi Repository lưu toàn bộ trong 1 Transaction
     const event = await eventRepository.createFullEvent({
       title,
       description: description || '',
-      start_time: new Date(start_time),
+      start_time: new Date(start_time), // Zod đã xác nhận đây là chuỗi ngày hợp lệ
       location,
       status: 'PUBLISHED',
       admin_id: adminId,
-      // Nhét nguyên mảng Zones (đã ngậm sẵn Seats) vào đây
       zones: {
         create: zonesDataToInsert
       }
     });
 
-    return { eventId: event.id };}
+    return { eventId: event.id };
+  }
 
   async updateImage(eventId, { image_url }) {
-    if (!image_url) {
-      throw new AppError('Image URL is required', 400);
-    }
-
+    // Không cần check !image_url ở đây nữa
     const event = await eventRepository.findById(eventId);
-    if (!event) throw new AppError('Event not found', 404);
+    if (!event) throw new AppError('Sự kiện không tồn tại', 404);
 
     return eventRepository.update(eventId, { image_url });
   }

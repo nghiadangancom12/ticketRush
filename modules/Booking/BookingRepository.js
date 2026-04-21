@@ -1,6 +1,6 @@
 const prisma = require('../../config/database');
 
-class SeatRepository {
+class BookingRepository {
   async countUserSeatsInEvent(userId, eventId) {
     return prisma.seats.count({
       where: {

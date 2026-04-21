@@ -20,4 +20,8 @@ exports.getMe = catchAsync(async (req, res) => {
   const user = await userService.getProfile(req.user.id);
   ResponseFactory.success(res, user);
 }); 
+exports.updateProfile = catchAsync(async (req, res) => {
+  const updated = await userService.updateProfile(req.user.id, req.body);
+  ResponseFactory.success(res, updated, 'Profile updated successfully');
+});
 module.exports = exports;

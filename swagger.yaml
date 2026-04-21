@@ -57,7 +57,7 @@ paths:
     post:
       tags: [Authentication]
       summary: Đăng ký tài khoản mới
-      description: Tạo tài khoản mới với vai trò CUSTOMER (user bình thường)
+      description: Tạo tài khoản mới với vai trò mặc định là CUSTOMER
       requestBody:
         required: true
         content:
@@ -67,28 +67,42 @@ paths:
               required:
                 - email
                 - password
+                - passwordConfirm
                 - full_name
               properties:
                 email:
                   type: string
                   format: email
+                  example: "nghia@example.com"
                 password:
                   type: string
                   minLength: 6
+                  example: "password123"
+                passwordConfirm:
+                  type: string
+                  example: "password123"
                 full_name:
                   type: string
+                  example: "Nguyễn Đỗ Trọng Nghĩa"
+                date_of_birth:
+                  type: string
+                  description: "Định dạng YYYY-MM-DD"
+                  example: "2005-01-01"
+                gender:
+                  type: string
+                  enum: [MALE, FEMALE, OTHER]
       responses:
         '201':
           description: Đăng ký thành công
         '400':
-          description: Email đã tồn tại hoặc dữ liệu không hợp lệ
+          description: Lỗi dữ liệu đầu vào (Zod) hoặc Email đã tồn tại
 
   /api/auth/login:
     post:
       tags: [Authentication]
       summary: Đăng nhập
       description: |
-        Đăng nhập và nhận JWT token qua HttpOnly Cookie
+        Đăng nhập và nhận JWT token qua HttpOnly Cookie.
         
         🔐 Cookie sẽ được tự động gửi:
         - HttpOnly: Không thể truy cập từ JavaScript
@@ -107,7 +121,7 @@ paths:
                 email:
                   type: string
                   format: email
-                  example: "user@example.com"
+                  example: "nghia@example.com"
                 password:
                   type: string
                   example: "password123"
@@ -124,8 +138,12 @@ paths:
               schema:
                 type: object
                 properties:
-                  success:
-                    type: boolean
+                  status:
+                    type: string
+                    example: "success"
+                  message:
+                    type: string
+                    example: "Đăng nhập thành công"
                   data:
                     type: object
                     properties:
@@ -133,14 +151,13 @@ paths:
                         type: object
                       accessToken:
                         type: string
-                        description: Token cũng được trả về trong body (tuỳ chọn)
-        '404':
-          description: Người dùng không tồn tại
         '401':
-          description: Mật khẩu không đúng
+          description: Sai email hoặc mật khẩu
+        '400':
+          description: Lỗi định dạng dữ liệu gửi lên
 
   /api/auth/logout:
-    post:
+    get:
       tags: [Authentication]
       summary: Đăng xuất
       description: |
@@ -159,6 +176,64 @@ paths:
                 type: string
                 example: jwt=loggedout; HttpOnly; Secure; SameSite=None; Path=/; Max-Age=10
 
+  /api/auth/forgotPassword:
+    post:
+      tags: [Authentication]
+      summary: Quên mật khẩu
+      description: Gửi email chứa token và link để đặt lại mật khẩu (Token có hạn 10 phút)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - email
+              properties:
+                email:
+                  type: string
+                  format: email
+                  example: "nghia@example.com"
+      responses:
+        '200':
+          description: Token đã được gửi vào email
+        '404':
+          description: Không tìm thấy người dùng với email này
+
+  /api/auth/resetPassword/{token}:
+    patch:
+      tags: [Authentication]
+      summary: Đặt lại mật khẩu
+      description: Đặt lại mật khẩu mới dựa trên token lấy từ email
+      parameters:
+        - in: path
+          name: token
+          required: true
+          schema:
+            type: string
+          description: Mã token nhận được từ email
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - password
+                - passwordConfirm
+              properties:
+                password:
+                  type: string
+                  minLength: 6
+                  example: "newpassword123"
+                passwordConfirm:
+                  type: string
+                  example: "newpassword123"
+      responses:
+        '200':
+          description: Đặt lại mật khẩu thành công và tự động đăng nhập (nhận token mới)
+        '400':
+          description: Mật khẩu xác nhận không khớp hoặc token không hợp lệ / đã hết hạn
   /api/users/me:
     get:
       tags: [Users]
@@ -329,9 +404,9 @@ paths:
         '403':
           description: Chỉ admin mới có thể cập nhật ảnh
 
-  /api/seats/hold:
+  /api/Booking/hold:
     post:
-      tags: [Seats]
+      tags: [Booking]
       summary: Giữ ghế để đặt hàng
       description: Giữ ghế trong 1 phút để hoàn tất thanh toán
       security:
@@ -358,9 +433,9 @@ paths:
         '412':
           description: Một số ghế không còn trống
 
-  /api/seats/checkout:
+  /api/Booking/checkout:
     post:
-      tags: [Seats]
+      tags: [Booking]
       summary: Hoàn tất thanh toán
       description: Xác nhận mua các ghế đã giữ và tạo đơn hàng
       security:

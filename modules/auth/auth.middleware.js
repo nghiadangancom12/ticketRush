@@ -32,7 +32,16 @@ exports.verifyToken = catchAsync(async (req, res, next) => {
     return next(new AppError('Tài khoản thuộc về token này không còn tồn tại.', 401));
   }
 
-  // 5. Cấp quyền
+  // 5. Kiểm tra mật khẩu có bị đổi sau khi token được cấp không
+  if (currentUser.password_changed_at) {
+    const changedTimestamp = parseInt(currentUser.password_changed_at.getTime() / 1000, 10);
+
+    if (decoded.iat < changedTimestamp) {
+      return next(new AppError('Mật khẩu của bạn đã được thay đổi gần đây! Vui lòng đăng nhập lại.', 401));
+    }
+  }
+
+  // 6. Cấp quyền
   req.user = currentUser;
   next();
 });
@@ -42,4 +51,22 @@ exports.isAdmin = (req, res, next) => {
     return next(new AppError('Yêu cầu quyền Admin!', 403));
   }
   next();
+};
+exports.restrictTo = (...roles) => {
+  return (req, res, next) => {
+    // 1. Kiểm tra xem user có tồn tại không (đề phòng verifyToken bị lỗi)
+    if (!req.user) {
+      return next(new AppError('Không tìm thấy thông tin người dùng. Vui lòng đăng nhập lại!', 401));
+    }
+
+    // 2. Kiểm tra quyền
+    // Biến 'roles' sẽ là một mảng chứa các quyền được truyền vào. VD: ['ADMIN', 'MANAGER']
+    // Nếu role của user hiện tại không nằm trong mảng này -> Chặn!
+    if (!roles.includes(req.user.role)) {
+      return next(new AppError('Bạn không có quyền thực hiện hành động này!', 403));
+    }
+
+    // 3. Hợp lệ -> Cho phép đi tiếp vào Controller
+    next();
+  };
 };

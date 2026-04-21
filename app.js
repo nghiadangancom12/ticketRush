@@ -32,7 +32,7 @@ app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 app.use('/api/auth',      require('./modules/auth/authRoutes'));
 app.use('/api/users',     require('./modules/users/usersRoutes'));
 app.use('/api/events',    require('./modules/events/eventRoutes'));
-app.use('/api/seats',     require('./modules/seats/seatRoutes'));
+app.use('/api/Booking',     require('./modules/Booking/BookingRoutes'));
 app.use('/api/customers', require('./modules/customers/customerRoutes'));
 app.use('/api/admin',     require('./modules/admin/AdminRoutes'));
 

@@ -69,9 +69,12 @@ model users {
   full_name     String       @db.VarChar(255)
   date_of_birth DateTime?    @db.Date
   gender        gender_enum?
-  avatar_url    String?      @db.VarChar(500)
-  role          role_enum?   @default(CUSTOMER)
-  created_at    DateTime?    @default(now()) @db.Timestamptz(6)
+  avatar_url             String?      @db.VarChar(500)
+  role                   role_enum?   @default(CUSTOMER)
+  password_changed_at    DateTime?    @db.Timestamptz(6)
+  password_reset_token   String?      @db.VarChar(255)
+  password_reset_expires DateTime?    @db.Timestamptz(6)
+  created_at             DateTime?    @default(now()) @db.Timestamptz(6)
   events        events[]
   orders        orders[]
   seats         seats[]

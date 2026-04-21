@@ -8,10 +8,13 @@ class ResponseFactory {
   }
 
   static error(res, message = 'Error', statusCode = 400, errors = null) {
+    // Tự động phân loại 'fail' (4xx) hay 'error' (500) đồng bộ với AppError
+    const statusType = `${statusCode}`.startsWith('4') ? 'fail' : 'error';
+
     return res.status(statusCode).json({
-      status: 'error',
+      status: statusType,
       message,
-      ...(errors && { errors })
+      ...(errors && { errors }) // Nếu có errors (ví dụ từ Zod) thì mới đưa vào JSON trả về
     });
   }
 }

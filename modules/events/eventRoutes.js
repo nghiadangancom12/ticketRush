@@ -1,11 +1,13 @@
 const express = require('express');
 const router = express.Router();
 const eventController = require('./eventController');
-const { verifyToken, isAdmin } = require('../auth/auth.middleware');
+const { verifyToken, restrictTo } = require('../auth/auth.middleware');
+const validate = require('../../utils/validate');
+const eventSchema = require('./eventSchema');
 
 router.get('/', eventController.getAll);
-router.get('/:id', eventController.getOne);
-router.post('/', verifyToken, isAdmin, eventController.createEvents);
-router.patch('/:id/image', verifyToken, isAdmin, eventController.updateImage);
+router.get('/:id', verifyToken, eventController.getOne);
+router.post('/', verifyToken, restrictTo('ADMIN'), validate(eventSchema.createEventSchema), eventController.createEvents);
+router.patch('/:id/image', verifyToken, restrictTo('ADMIN'), validate(eventSchema.updateImageSchema), eventController.updateImage);
 
 module.exports = router;

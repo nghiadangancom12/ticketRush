@@ -69,6 +69,35 @@ class AuthController {
 
     ResponseFactory.success(res, null, 'Đăng xuất thành công', 200);
   };
+
+  forgotPassword = catchAsync(async (req, res) => {
+    // 1. Gọi Service
+    await authService.forgotPassword(req.body.email, req.protocol, req.get('host'));
+
+    // 2. Trả Response
+    ResponseFactory.success(
+      res,
+      null,
+      'Email đổi mật khẩu đã được gửi! Vui lòng kiểm tra hộp thư.',
+      200
+    );
+  });
+
+  resetPassword = catchAsync(async (req, res) => {
+    // 1. Gọi Service
+    const { user, token } = await authService.resetPassword(req.params.token, req.body.password);
+
+    // 2. Gắn Cookie cho user vừa đổi pass xong (đăng nhập luôn)
+    this._setTokenCookie(res, token);
+
+    // 3. Trả Response
+    ResponseFactory.success(
+      res,
+      { user, accessToken: token },
+      'Đổi mật khẩu thành công!',
+      200
+    );
+  });
 }
 
 module.exports = new AuthController();
