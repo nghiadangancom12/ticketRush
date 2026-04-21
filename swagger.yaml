@@ -18,6 +18,8 @@ tags:
     description: Customer purchase history
   - name: Admin
     description: Admin dashboard and analytics
+  - name: Queue
+    description: Hàng chờ ảo (Virtual Queue) cho sự kiện
 servers:
   - url: http://localhost:3000
     description: Local Development
@@ -490,3 +492,73 @@ paths:
           description: Lấy phân tích thành công
         '403':
           description: Chỉ admin mới có thể xem
+
+  /api/queue/{eventId}/join:
+    post:
+      tags: [Queue]
+      summary: Tham gia hoặc kiểm tra vị trí hàng chờ
+      description: Bắt đầu xếp hàng vào sự kiện hoặc dùng để polling mỗi 5 giây cập nhật vị trí.
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      parameters:
+        - name: eventId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: ID sự kiện
+      responses:
+        '200':
+          description: Đã được cấp quyền truy cập vào mua vé (Status allowed).
+        '202':
+          description: Đang xếp hàng. Trả về vị trí hiện tại.
+
+  /api/queue/{eventId}/leave:
+    delete:
+      tags: [Queue]
+      summary: Rời khỏi hàng chờ
+      description: Người dùng chủ động rời khỏi hàng chờ hoặc từ bỏ lượt mua vé để nhường chỗ (slot) cho người khác.
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      parameters:
+        - name: eventId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: ID sự kiện
+      responses:
+        '200':
+          description: Đã rời khỏi hàng chờ thành công.
+
+  /api/queue/admin/{eventId}/toggle:
+    post:
+      tags: [Queue]
+      summary: Bật/Tắt Hàng chờ cho sự kiện (Admin only)
+      description: Bật (true) để buộc người dùng phải xếp hàng ảo, tắt (false) để cho phép mua vé tự do không cần xếp hàng.
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      parameters:
+        - name: eventId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: ID sự kiện
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [isActive]
+              properties:
+                isActive:
+                  type: boolean
+                  example: true
+      responses:
+        '200':
+          description: Cập nhật cấu hình queue thành công

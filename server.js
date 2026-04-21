@@ -10,8 +10,12 @@ const { Server } = require('socket.io');
 const cron = require('node-cron');
 const prisma = require('./config/database');
 const app = require('./app');
+const queueWorker = require('./modules/queue/queueWorker');
 
 const server = http.createServer(app);
+
+// Start Queue Worker
+queueWorker.start();
 const io = new Server(server, {
   cors: { 
     origin: process.env.FRONTEND_URL || 'http://localhost:5173',

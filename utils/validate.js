@@ -21,8 +21,8 @@ const validate = (schema) => {
     } catch (err) {
       // 3. Nếu là lỗi do Zod (Sai định dạng dữ liệu)
       if (err instanceof ZodError) {
-        // Format lại cục lỗi của Zod
-        const formattedErrors = err.errors.map((error) => ({
+        // Format lại cục lỗi của Zod (sử dụng issues thay vì errors để tránh undefined)
+        const formattedErrors = err.issues.map((error) => ({
           field: error.path[error.path.length - 1], 
           message: error.message,
         }));

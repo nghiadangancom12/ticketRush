@@ -108,6 +108,14 @@ class BookingService {
       console.error('❌ Lỗi gửi email vé sau checkout:', err.message);
     });
 
+    // 🚀 THÊM MỚI Ở ĐÂY: Giải phóng Slot Sớm
+    try {
+      const queueService = require('../queue/queueService');
+      await queueService.removeAllowed(eventId, userId);
+    } catch(err) {
+      console.error('Lỗi khi xoá queue allowed:', err.message);
+    }
+
     return result;
   }
 
