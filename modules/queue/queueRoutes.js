@@ -11,5 +11,5 @@ router.delete('/:eventId/leave', verifyToken, queueController.leaveQueue);
 
 // 3. Dành cho Admin: Bật/Tắt chế độ xếp hàng
 router.post('/admin/:eventId/toggle', verifyToken, restrictTo('ADMIN'), queueController.toggleQueue);
-
+router.post('/test-join/:eventId', queueController.testJoinQueue);
 module.exports = router;

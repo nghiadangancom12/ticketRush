@@ -1,0 +1,32 @@
+config:
+  target: "http://localhost:3000"
+  
+  phases:
+    - duration: 60          # 60 giây đầu: Tăng tốc
+      arrivalRate: 10       # Bắt đầu với 10 người/giây
+      rampTo: 100           # Tăng dần lên 100 người/giây
+      name: "Giai đoạn tăng tốc (Ramp-up)"
+
+    - duration: 30          # 30 giây sau: Duy trì đỉnh điểm
+      arrivalRate: 100      # Giữ mức 100 người mới mỗi giây
+      name: "Giai đoạn chịu tải cao (Sustain)"
+
+  defaults:
+    headers:
+      Content-Type: "application/json"
+
+scenarios:
+  - name: "User gia nhập hàng chờ (WebSocket Mode)"
+    flow:
+      - post:
+          url: "/api/queue/test-join/EVENT_VIP"
+          capture:
+            - json: "$.data.position"
+              as: "userPosition"
+          # Kiểm tra xem có đúng là nhận được mã 202 không
+          expect:
+            - statusCode: 202
+
+      # Sau khi POST thành công, User ảo sẽ "đứng đợi" 
+      # Điều này mô phỏng việc User giữ kết nối Socket mà không spam API
+      - think: 10

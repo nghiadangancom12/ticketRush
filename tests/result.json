@@ -1,0 +1,1485 @@
+{
+  "aggregate": {
+    "counters": {
+      "vusers.created_by_name.User gia nhập hàng chờ (WebSocket Mode)": 6300,
+      "vusers.created": 6300,
+      "http.requests": 6300,
+      "http.codes.202": 6300,
+      "http.responses": 6300,
+      "http.downloaded_bytes": 415035,
+      "plugins.metrics-by-endpoint./api/queue/test-join/EVENT_VIP.codes.202": 6300,
+      "vusers.failed": 1,
+      "vusers.completed": 6299,
+      "errors.Failed capture or match": 1
+    },
+    "rates": {
+      "http.request_rate": 29
+    },
+    "firstCounterAt": 1776855109687,
+    "firstHistogramAt": 1776855110529,
+    "lastCounterAt": 1776855210358,
+    "lastHistogramAt": 1776855210358,
+    "firstMetricAt": 1776855109687,
+    "lastMetricAt": 1776855210358,
+    "period": 1776855210000,
+    "summaries": {
+      "http.response_time": {
+        "min": 271,
+        "max": 3056,
+        "count": 6300,
+        "mean": 598.6,
+        "p50": 539.2,
+        "median": 539.2,
+        "p75": 584.2,
+        "p90": 671.9,
+        "p95": 804.5,
+        "p99": 1978.7,
+        "p999": 2951.9
+      },
+      "http.response_time.2xx": {
+        "min": 271,
+        "max": 3056,
+        "count": 6300,
+        "mean": 598.6,
+        "p50": 539.2,
+        "median": 539.2,
+        "p75": 584.2,
+        "p90": 671.9,
+        "p95": 804.5,
+        "p99": 1978.7,
+        "p999": 2951.9
+      },
+      "plugins.metrics-by-endpoint.response_time./api/queue/test-join/EVENT_VIP": {
+        "min": 271,
+        "max": 3056,
+        "count": 6300,
+        "mean": 598.6,
+        "p50": 539.2,
+        "median": 539.2,
+        "p75": 584.2,
+        "p90": 671.9,
+        "p95": 804.5,
+        "p99": 1978.7,
+        "p999": 2951.9
+      },
+      "vusers.session_length": {
+        "min": 10438.5,
+        "max": 13069.8,
+        "count": 6299,
+        "mean": 10609.1,
+        "p50": 10617.5,
+        "median": 10617.5,
+        "p75": 10617.5,
+        "p90": 10617.5,
+        "p95": 10832,
+        "p99": 11971.2,
+        "p999": 12968.3
+      }
+    },
+    "histograms": {
+      "http.response_time": {
+        "min": 271,
+        "max": 3056,
+        "count": 6300,
+        "mean": 598.6,
+        "p50": 539.2,
+        "median": 539.2,
+        "p75": 584.2,
+        "p90": 671.9,
+        "p95": 804.5,
+        "p99": 1978.7,
+        "p999": 2951.9
+      },
+      "http.response_time.2xx": {
+        "min": 271,
+        "max": 3056,
+        "count": 6300,
+        "mean": 598.6,
+        "p50": 539.2,
+        "median": 539.2,
+        "p75": 584.2,
+        "p90": 671.9,
+        "p95": 804.5,
+        "p99": 1978.7,
+        "p999": 2951.9
+      },
+      "plugins.metrics-by-endpoint.response_time./api/queue/test-join/EVENT_VIP": {
+        "min": 271,
+        "max": 3056,
+        "count": 6300,
+        "mean": 598.6,
+        "p50": 539.2,
+        "median": 539.2,
+        "p75": 584.2,
+        "p90": 671.9,
+        "p95": 804.5,
+        "p99": 1978.7,
+        "p999": 2951.9
+      },
+      "vusers.session_length": {
+        "min": 10438.5,
+        "max": 13069.8,
+        "count": 6299,
+        "mean": 10609.1,
+        "p50": 10617.5,
+        "median": 10617.5,
+        "p75": 10617.5,
+        "p90": 10617.5,
+        "p95": 10832,
+        "p99": 11971.2,
+        "p999": 12968.3
+      }
+    }
+  },
+  "intermediate": [
+    {
+      "counters": {
+        "vusers.created_by_name.User gia nhập hàng chờ (WebSocket Mode)": 5,
+        "vusers.created": 5,
+        "http.requests": 5
+      },
+      "rates": {
+        "http.request_rate": 5
+      },
+      "http.request_rate": null,
+      "firstCounterAt": 1776855109687,
+      "lastCounterAt": 1776855109957,
+      "firstMetricAt": 1776855109687,
+      "lastMetricAt": 1776855109957,
+      "period": "1776855100000",
+      "summaries": {},
+      "histograms": {}
+    },
+    {
+      "counters": {
+        "vusers.created_by_name.User gia nhập hàng chờ (WebSocket Mode)": 183,
+        "vusers.created": 183,
+        "http.requests": 183,
+        "http.codes.202": 151,
+        "http.responses": 151,
+        "http.downloaded_bytes": 9945,
+        "plugins.metrics-by-endpoint./api/queue/test-join/EVENT_VIP.codes.202": 151
+      },
+      "rates": {
+        "http.request_rate": 19
+      },
+      "http.request_rate": null,
+      "firstCounterAt": 1776855110005,
+      "firstHistogramAt": 1776855110529,
+      "lastCounterAt": 1776855119966,
+      "lastHistogramAt": 1776855119797,
+      "firstMetricAt": 1776855110005,
+      "lastMetricAt": 1776855119966,
+      "period": "1776855110000",
+      "summaries": {
+        "http.response_time": {
+          "min": 513,
+          "max": 3056,
+          "count": 151,
+          "mean": 1756.1,
+          "p50": 1686.1,
+          "median": 1686.1,
+          "p75": 2276.1,
+          "p90": 2780,
+          "p95": 2893.5,
+          "p99": 3011.6,
+          "p999": 3072.4
+        },
+        "http.response_time.2xx": {
+          "min": 513,
+          "max": 3056,
+          "count": 151,
+          "mean": 1756.1,
+          "p50": 1686.1,
+          "median": 1686.1,
+          "p75": 2276.1,
+          "p90": 2780,
+          "p95": 2893.5,
+          "p99": 3011.6,
+          "p999": 3072.4
+        },
+        "plugins.metrics-by-endpoint.response_time./api/queue/test-join/EVENT_VIP": {
+          "min": 513,
+          "max": 3056,
+          "count": 151,
+          "mean": 1756.1,
+          "p50": 1686.1,
+          "median": 1686.1,
+          "p75": 2276.1,
+          "p90": 2780,
+          "p95": 2893.5,
+          "p99": 3011.6,
+          "p999": 3072.4
+        }
+      },
+      "histograms": {
+        "http.response_time": {
+          "min": 513,
+          "max": 3056,
+          "count": 151,
+          "mean": 1756.1,
+          "p50": 1686.1,
+          "median": 1686.1,
+          "p75": 2276.1,
+          "p90": 2780,
+          "p95": 2893.5,
+          "p99": 3011.6,
+          "p999": 3072.4
+        },
+        "http.response_time.2xx": {
+          "min": 513,
+          "max": 3056,
+          "count": 151,
+          "mean": 1756.1,
+          "p50": 1686.1,
+          "median": 1686.1,
+          "p75": 2276.1,
+          "p90": 2780,
+          "p95": 2893.5,
+          "p99": 3011.6,
+          "p999": 3072.4
+        },
+        "plugins.metrics-by-endpoint.response_time./api/queue/test-join/EVENT_VIP": {
+          "min": 513,
+          "max": 3056,
+          "count": 151,
+          "mean": 1756.1,
+          "p50": 1686.1,
+          "median": 1686.1,
+          "p75": 2276.1,
+          "p90": 2780,
+          "p95": 2893.5,
+          "p99": 3011.6,
+          "p999": 3072.4
+        }
+      }
+    },
+    {
+      "counters": {
+        "vusers.created_by_name.User gia nhập hàng chờ (WebSocket Mode)": 330,
+        "vusers.created": 330,
+        "http.requests": 330,
+        "http.codes.202": 345,
+        "http.responses": 345,
+        "http.downloaded_bytes": 22728,
+        "plugins.metrics-by-endpoint./api/queue/test-join/EVENT_VIP.codes.202": 345,
+        "vusers.failed": 0,
+        "vusers.completed": 151
+      },
+      "rates": {
+        "http.request_rate": 34
+      },
+      "http.request_rate": null,
+      "firstCounterAt": 1776855120027,
+      "firstHistogramAt": 1776855120426,
+      "lastCounterAt": 1776855129988,
+      "lastHistogramAt": 1776855129886,
+      "firstMetricAt": 1776855120027,
+      "lastMetricAt": 1776855129988,
+      "period": "1776855120000",
+      "summaries": {
+        "http.response_time": {
+          "min": 450,
+          "max": 2072,
+          "count": 345,
+          "mean": 777.4,
+          "p50": 561.2,
+          "median": 561.2,
+          "p75": 963.1,
+          "p90": 1525.7,
+          "p95": 1720.2,
+          "p99": 1978.7,
+          "p999": 2018.7
+        },
+        "http.response_time.2xx": {
+          "min": 450,
+          "max": 2072,
+          "count": 345,
+          "mean": 777.4,
+          "p50": 561.2,
+          "median": 561.2,
+          "p75": 963.1,
+          "p90": 1525.7,
+          "p95": 1720.2,
+          "p99": 1978.7,
+          "p999": 2018.7
+        },
+        "plugins.metrics-by-endpoint.response_time./api/queue/test-join/EVENT_VIP": {
+          "min": 450,
+          "max": 2072,
+          "count": 345,
+          "mean": 777.4,
+          "p50": 561.2,
+          "median": 561.2,
+          "p75": 963.1,
+          "p90": 1525.7,
+          "p95": 1720.2,
+          "p99": 1978.7,
+          "p999": 2018.7
+        },
+        "vusers.session_length": {
+          "min": 10528.8,
+          "max": 13069.8,
+          "count": 151,
+          "mean": 11768.9,
+          "p50": 11734.2,
+          "median": 11734.2,
+          "p75": 12213.1,
+          "p90": 12711.5,
+          "p95": 12968.3,
+          "p99": 12968.3,
+          "p999": 12968.3
+        }
+      },
+      "histograms": {
+        "http.response_time": {
+          "min": 450,
+          "max": 2072,
+          "count": 345,
+          "mean": 777.4,
+          "p50": 561.2,
+          "median": 561.2,
+          "p75": 963.1,
+          "p90": 1525.7,
+          "p95": 1720.2,
+          "p99": 1978.7,
+          "p999": 2018.7
+        },
+        "http.response_time.2xx": {
+          "min": 450,
+          "max": 2072,
+          "count": 345,
+          "mean": 777.4,
+          "p50": 561.2,
+          "median": 561.2,
+          "p75": 963.1,
+          "p90": 1525.7,
+          "p95": 1720.2,
+          "p99": 1978.7,
+          "p999": 2018.7
+        },
+        "plugins.metrics-by-endpoint.response_time./api/queue/test-join/EVENT_VIP": {
+          "min": 450,
+          "max": 2072,
+          "count": 345,
+          "mean": 777.4,
+          "p50": 561.2,
+          "median": 561.2,
+          "p75": 963.1,
+          "p90": 1525.7,
+          "p95": 1720.2,
+          "p99": 1978.7,
+          "p999": 2018.7
+        },
+        "vusers.session_length": {
+          "min": 10528.8,
+          "max": 13069.8,
+          "count": 151,
+          "mean": 11768.9,
+          "p50": 11734.2,
+          "median": 11734.2,
+          "p75": 12213.1,
+          "p90": 12711.5,
+          "p95": 12968.3,
+          "p99": 12968.3,
+          "p999": 12968.3
+        }
+      }
+    },
+    {
+      "counters": {
+        "http.codes.202": 474,
+        "http.responses": 474,
+        "http.downloaded_bytes": 31130,
+        "plugins.metrics-by-endpoint./api/queue/test-join/EVENT_VIP.codes.202": 472,
+        "vusers.created_by_name.User gia nhập hàng chờ (WebSocket Mode)": 483,
+        "vusers.created": 483,
+        "http.requests": 482,
+        "vusers.failed": 1,
+        "vusers.completed": 345,
+        "errors.Failed capture or match": 1
+      },
+      "rates": {
+        "http.request_rate": 50
+      },
+      "http.request_rate": null,
+      "firstCounterAt": 1776855130003,
+      "firstHistogramAt": 1776855130005,
+      "lastCounterAt": 1776855139999,
+      "lastHistogramAt": 1776855139999,
+      "firstMetricAt": 1776855130003,
+      "lastMetricAt": 1776855139999,
+      "period": "1776855130000",
+      "summaries": {
+        "http.response_time": {
+          "min": 271,
+          "max": 654,
+          "count": 474,
+          "mean": 524,
+          "p50": 518.1,
+          "median": 518.1,
+          "p75": 539.2,
+          "p90": 572.6,
+          "p95": 596,
+          "p99": 645.6,
+          "p999": 658.6
+        },
+        "http.response_time.2xx": {
+          "min": 271,
+          "max": 654,
+          "count": 474,
+          "mean": 524,
+          "p50": 518.1,
+          "median": 518.1,
+          "p75": 539.2,
+          "p90": 572.6,
+          "p95": 596,
+          "p99": 645.6,
+          "p999": 658.6
+        },
+        "plugins.metrics-by-endpoint.response_time./api/queue/test-join/EVENT_VIP": {
+          "min": 271,
+          "max": 654,
+          "count": 472,
+          "mean": 523.9,
+          "p50": 518.1,
+          "median": 518.1,
+          "p75": 539.2,
+          "p90": 572.6,
+          "p95": 596,
+          "p99": 645.6,
+          "p999": 658.6
+        },
+        "vusers.session_length": {
+          "min": 10459.1,
+          "max": 12081.2,
+          "count": 345,
+          "mean": 10788.1,
+          "p50": 10617.5,
+          "median": 10617.5,
+          "p75": 11050.8,
+          "p90": 11501.8,
+          "p95": 11734.2,
+          "p99": 11971.2,
+          "p999": 11971.2
+        }
+      },
+      "histograms": {
+        "http.response_time": {
+          "min": 271,
+          "max": 654,
+          "count": 474,
+          "mean": 524,
+          "p50": 518.1,
+          "median": 518.1,
+          "p75": 539.2,
+          "p90": 572.6,
+          "p95": 596,
+          "p99": 645.6,
+          "p999": 658.6
+        },
+        "http.response_time.2xx": {
+          "min": 271,
+          "max": 654,
+          "count": 474,
+          "mean": 524,
+          "p50": 518.1,
+          "median": 518.1,
+          "p75": 539.2,
+          "p90": 572.6,
+          "p95": 596,
+          "p99": 645.6,
+          "p999": 658.6
+        },
+        "plugins.metrics-by-endpoint.response_time./api/queue/test-join/EVENT_VIP": {
+          "min": 271,
+          "max": 654,
+          "count": 472,
+          "mean": 523.9,
+          "p50": 518.1,
+          "median": 518.1,
+          "p75": 539.2,
+          "p90": 572.6,
+          "p95": 596,
+          "p99": 645.6,
+          "p999": 658.6
+        },
+        "vusers.session_length": {
+          "min": 10459.1,
+          "max": 12081.2,
+          "count": 345,
+          "mean": 10788.1,
+          "p50": 10617.5,
+          "median": 10617.5,
+          "p75": 11050.8,
+          "p90": 11501.8,
+          "p95": 11734.2,
+          "p99": 11971.2,
+          "p999": 11971.2
+        }
+      }
+    },
+    {
+      "counters": {
+        "http.codes.202": 623,
+        "http.responses": 623,
+        "http.downloaded_bytes": 41132,
+        "plugins.metrics-by-endpoint./api/queue/test-join/EVENT_VIP.codes.202": 625,
+        "vusers.failed": 0,
+        "vusers.completed": 467,
+        "vusers.created_by_name.User gia nhập hàng chờ (WebSocket Mode)": 629,
+        "vusers.created": 629,
+        "http.requests": 630
+      },
+      "rates": {
+        "http.request_rate": 64
+      },
+      "http.request_rate": null,
+      "firstCounterAt": 1776855140000,
+      "firstHistogramAt": 1776855140000,
+      "lastCounterAt": 1776855149994,
+      "lastHistogramAt": 1776855149994,
+      "firstMetricAt": 1776855140000,
+      "lastMetricAt": 1776855149994,
+      "period": "1776855140000",
+      "summaries": {
+        "http.response_time": {
+          "min": 463,
+          "max": 896,
+          "count": 623,
+          "mean": 560.5,
+          "p50": 539.2,
+          "median": 539.2,
+          "p75": 584.2,
+          "p90": 671.9,
+          "p95": 713.5,
+          "p99": 772.9,
+          "p999": 889.1
+        },
+        "http.response_time.2xx": {
+          "min": 463,
+          "max": 896,
+          "count": 623,
+          "mean": 560.5,
+          "p50": 539.2,
+          "median": 539.2,
+          "p75": 584.2,
+          "p90": 671.9,
+          "p95": 713.5,
+          "p99": 772.9,
+          "p999": 889.1
+        },
+        "plugins.metrics-by-endpoint.response_time./api/queue/test-join/EVENT_VIP": {
+          "min": 463,
+          "max": 896,
+          "count": 625,
+          "mean": 560.5,
+          "p50": 539.2,
+          "median": 539.2,
+          "p75": 584.2,
+          "p90": 671.9,
+          "p95": 713.5,
+          "p99": 772.9,
+          "p999": 889.1
+        },
+        "vusers.session_length": {
+          "min": 10468.5,
+          "max": 10666,
+          "count": 467,
+          "mean": 10533.7,
+          "p50": 10617.5,
+          "median": 10617.5,
+          "p75": 10617.5,
+          "p90": 10617.5,
+          "p95": 10617.5,
+          "p99": 10617.5,
+          "p999": 10617.5
+        }
+      },
+      "histograms": {
+        "http.response_time": {
+          "min": 463,
+          "max": 896,
+          "count": 623,
+          "mean": 560.5,
+          "p50": 539.2,
+          "median": 539.2,
+          "p75": 584.2,
+          "p90": 671.9,
+          "p95": 713.5,
+          "p99": 772.9,
+          "p999": 889.1
+        },
+        "http.response_time.2xx": {
+          "min": 463,
+          "max": 896,
+          "count": 623,
+          "mean": 560.5,
+          "p50": 539.2,
+          "median": 539.2,
+          "p75": 584.2,
+          "p90": 671.9,
+          "p95": 713.5,
+          "p99": 772.9,
+          "p999": 889.1
+        },
+        "plugins.metrics-by-endpoint.response_time./api/queue/test-join/EVENT_VIP": {
+          "min": 463,
+          "max": 896,
+          "count": 625,
+          "mean": 560.5,
+          "p50": 539.2,
+          "median": 539.2,
+          "p75": 584.2,
+          "p90": 671.9,
+          "p95": 713.5,
+          "p99": 772.9,
+          "p999": 889.1
+        },
+        "vusers.session_length": {
+          "min": 10468.5,
+          "max": 10666,
+          "count": 467,
+          "mean": 10533.7,
+          "p50": 10617.5,
+          "median": 10617.5,
+          "p75": 10617.5,
+          "p90": 10617.5,
+          "p95": 10617.5,
+          "p99": 10617.5,
+          "p999": 10617.5
+        }
+      }
+    },
+    {
+      "counters": {
+        "vusers.failed": 0,
+        "vusers.completed": 626,
+        "http.codes.202": 772,
+        "http.responses": 772,
+        "http.downloaded_bytes": 50861,
+        "plugins.metrics-by-endpoint./api/queue/test-join/EVENT_VIP.codes.202": 772,
+        "vusers.created_by_name.User gia nhập hàng chờ (WebSocket Mode)": 780,
+        "vusers.created": 780,
+        "http.requests": 780
+      },
+      "rates": {
+        "http.request_rate": 80
+      },
+      "http.request_rate": null,
+      "firstCounterAt": 1776855150007,
+      "firstHistogramAt": 1776855150007,
+      "lastCounterAt": 1776855159965,
+      "lastHistogramAt": 1776855159964,
+      "firstMetricAt": 1776855150007,
+      "lastMetricAt": 1776855159965,
+      "period": "1776855150000",
+      "summaries": {
+        "vusers.session_length": {
+          "min": 10472.7,
+          "max": 10907.5,
+          "count": 626,
+          "mean": 10571.7,
+          "p50": 10617.5,
+          "median": 10617.5,
+          "p75": 10617.5,
+          "p90": 10617.5,
+          "p95": 10617.5,
+          "p99": 10832,
+          "p999": 10832
+        },
+        "http.response_time": {
+          "min": 464,
+          "max": 740,
+          "count": 772,
+          "mean": 574.5,
+          "p50": 572.6,
+          "median": 572.6,
+          "p75": 608,
+          "p90": 645.6,
+          "p95": 671.9,
+          "p99": 727.9,
+          "p999": 742.6
+        },
+        "http.response_time.2xx": {
+          "min": 464,
+          "max": 740,
+          "count": 772,
+          "mean": 574.5,
+          "p50": 572.6,
+          "median": 572.6,
+          "p75": 608,
+          "p90": 645.6,
+          "p95": 671.9,
+          "p99": 727.9,
+          "p999": 742.6
+        },
+        "plugins.metrics-by-endpoint.response_time./api/queue/test-join/EVENT_VIP": {
+          "min": 464,
+          "max": 740,
+          "count": 772,
+          "mean": 574.5,
+          "p50": 572.6,
+          "median": 572.6,
+          "p75": 608,
+          "p90": 645.6,
+          "p95": 671.9,
+          "p99": 727.9,
+          "p999": 742.6
+        }
+      },
+      "histograms": {
+        "vusers.session_length": {
+          "min": 10472.7,
+          "max": 10907.5,
+          "count": 626,
+          "mean": 10571.7,
+          "p50": 10617.5,
+          "median": 10617.5,
+          "p75": 10617.5,
+          "p90": 10617.5,
+          "p95": 10617.5,
+          "p99": 10832,
+          "p999": 10832
+        },
+        "http.response_time": {
+          "min": 464,
+          "max": 740,
+          "count": 772,
+          "mean": 574.5,
+          "p50": 572.6,
+          "median": 572.6,
+          "p75": 608,
+          "p90": 645.6,
+          "p95": 671.9,
+          "p99": 727.9,
+          "p999": 742.6
+        },
+        "http.response_time.2xx": {
+          "min": 464,
+          "max": 740,
+          "count": 772,
+          "mean": 574.5,
+          "p50": 572.6,
+          "median": 572.6,
+          "p75": 608,
+          "p90": 645.6,
+          "p95": 671.9,
+          "p99": 727.9,
+          "p999": 742.6
+        },
+        "plugins.metrics-by-endpoint.response_time./api/queue/test-join/EVENT_VIP": {
+          "min": 464,
+          "max": 740,
+          "count": 772,
+          "mean": 574.5,
+          "p50": 572.6,
+          "median": 572.6,
+          "p75": 608,
+          "p90": 645.6,
+          "p95": 671.9,
+          "p99": 727.9,
+          "p999": 742.6
+        }
+      }
+    },
+    {
+      "counters": {
+        "vusers.created_by_name.User gia nhập hàng chờ (WebSocket Mode)": 932,
+        "vusers.created": 932,
+        "http.requests": 932,
+        "vusers.failed": 0,
+        "vusers.completed": 775,
+        "http.codes.202": 929,
+        "http.responses": 929,
+        "http.downloaded_bytes": 61208,
+        "plugins.metrics-by-endpoint./api/queue/test-join/EVENT_VIP.codes.202": 929
+      },
+      "rates": {
+        "http.request_rate": 94
+      },
+      "http.request_rate": null,
+      "firstCounterAt": 1776855160006,
+      "firstHistogramAt": 1776855160006,
+      "lastCounterAt": 1776855169999,
+      "lastHistogramAt": 1776855169999,
+      "firstMetricAt": 1776855160006,
+      "lastMetricAt": 1776855169999,
+      "period": "1776855160000",
+      "summaries": {
+        "vusers.session_length": {
+          "min": 10465.8,
+          "max": 10755.4,
+          "count": 775,
+          "mean": 10585.1,
+          "p50": 10617.5,
+          "median": 10617.5,
+          "p75": 10617.5,
+          "p90": 10617.5,
+          "p95": 10617.5,
+          "p99": 10832,
+          "p999": 10832
+        },
+        "http.response_time": {
+          "min": 458,
+          "max": 920,
+          "count": 929,
+          "mean": 586,
+          "p50": 572.6,
+          "median": 572.6,
+          "p75": 620.3,
+          "p90": 685.5,
+          "p95": 727.9,
+          "p99": 854.2,
+          "p999": 907
+        },
+        "http.response_time.2xx": {
+          "min": 458,
+          "max": 920,
+          "count": 929,
+          "mean": 586,
+          "p50": 572.6,
+          "median": 572.6,
+          "p75": 620.3,
+          "p90": 685.5,
+          "p95": 727.9,
+          "p99": 854.2,
+          "p999": 907
+        },
+        "plugins.metrics-by-endpoint.response_time./api/queue/test-join/EVENT_VIP": {
+          "min": 458,
+          "max": 920,
+          "count": 929,
+          "mean": 586,
+          "p50": 572.6,
+          "median": 572.6,
+          "p75": 620.3,
+          "p90": 685.5,
+          "p95": 727.9,
+          "p99": 854.2,
+          "p999": 907
+        }
+      },
+      "histograms": {
+        "vusers.session_length": {
+          "min": 10465.8,
+          "max": 10755.4,
+          "count": 775,
+          "mean": 10585.1,
+          "p50": 10617.5,
+          "median": 10617.5,
+          "p75": 10617.5,
+          "p90": 10617.5,
+          "p95": 10617.5,
+          "p99": 10832,
+          "p999": 10832
+        },
+        "http.response_time": {
+          "min": 458,
+          "max": 920,
+          "count": 929,
+          "mean": 586,
+          "p50": 572.6,
+          "median": 572.6,
+          "p75": 620.3,
+          "p90": 685.5,
+          "p95": 727.9,
+          "p99": 854.2,
+          "p999": 907
+        },
+        "http.response_time.2xx": {
+          "min": 458,
+          "max": 920,
+          "count": 929,
+          "mean": 586,
+          "p50": 572.6,
+          "median": 572.6,
+          "p75": 620.3,
+          "p90": 685.5,
+          "p95": 727.9,
+          "p99": 854.2,
+          "p999": 907
+        },
+        "plugins.metrics-by-endpoint.response_time./api/queue/test-join/EVENT_VIP": {
+          "min": 458,
+          "max": 920,
+          "count": 929,
+          "mean": 586,
+          "p50": 572.6,
+          "median": 572.6,
+          "p75": 620.3,
+          "p90": 685.5,
+          "p95": 727.9,
+          "p99": 854.2,
+          "p999": 907
+        }
+      }
+    },
+    {
+      "counters": {
+        "vusers.created_by_name.User gia nhập hàng chờ (WebSocket Mode)": 1000,
+        "vusers.created": 1000,
+        "http.requests": 1000,
+        "http.codes.202": 996,
+        "http.responses": 996,
+        "http.downloaded_bytes": 65613,
+        "plugins.metrics-by-endpoint./api/queue/test-join/EVENT_VIP.codes.202": 996,
+        "vusers.failed": 0,
+        "vusers.completed": 920
+      },
+      "rates": {
+        "http.request_rate": 100
+      },
+      "http.request_rate": null,
+      "firstCounterAt": 1776855170025,
+      "firstHistogramAt": 1776855170083,
+      "lastCounterAt": 1776855179993,
+      "lastHistogramAt": 1776855179972,
+      "firstMetricAt": 1776855170025,
+      "lastMetricAt": 1776855179993,
+      "period": "1776855170000",
+      "summaries": {
+        "http.response_time": {
+          "min": 437,
+          "max": 712,
+          "count": 996,
+          "mean": 537.6,
+          "p50": 528.6,
+          "median": 528.6,
+          "p75": 561.2,
+          "p90": 584.2,
+          "p95": 620.3,
+          "p99": 699.4,
+          "p999": 713.5
+        },
+        "http.response_time.2xx": {
+          "min": 437,
+          "max": 712,
+          "count": 996,
+          "mean": 537.6,
+          "p50": 528.6,
+          "median": 528.6,
+          "p75": 561.2,
+          "p90": 584.2,
+          "p95": 620.3,
+          "p99": 699.4,
+          "p999": 713.5
+        },
+        "plugins.metrics-by-endpoint.response_time./api/queue/test-join/EVENT_VIP": {
+          "min": 437,
+          "max": 712,
+          "count": 996,
+          "mean": 537.6,
+          "p50": 528.6,
+          "median": 528.6,
+          "p75": 561.2,
+          "p90": 584.2,
+          "p95": 620.3,
+          "p99": 699.4,
+          "p999": 713.5
+        },
+        "vusers.session_length": {
+          "min": 10467.6,
+          "max": 10932.9,
+          "count": 920,
+          "mean": 10595.9,
+          "p50": 10617.5,
+          "median": 10617.5,
+          "p75": 10617.5,
+          "p90": 10617.5,
+          "p95": 10832,
+          "p99": 10832,
+          "p999": 10832
+        }
+      },
+      "histograms": {
+        "http.response_time": {
+          "min": 437,
+          "max": 712,
+          "count": 996,
+          "mean": 537.6,
+          "p50": 528.6,
+          "median": 528.6,
+          "p75": 561.2,
+          "p90": 584.2,
+          "p95": 620.3,
+          "p99": 699.4,
+          "p999": 713.5
+        },
+        "http.response_time.2xx": {
+          "min": 437,
+          "max": 712,
+          "count": 996,
+          "mean": 537.6,
+          "p50": 528.6,
+          "median": 528.6,
+          "p75": 561.2,
+          "p90": 584.2,
+          "p95": 620.3,
+          "p99": 699.4,
+          "p999": 713.5
+        },
+        "plugins.metrics-by-endpoint.response_time./api/queue/test-join/EVENT_VIP": {
+          "min": 437,
+          "max": 712,
+          "count": 996,
+          "mean": 537.6,
+          "p50": 528.6,
+          "median": 528.6,
+          "p75": 561.2,
+          "p90": 584.2,
+          "p95": 620.3,
+          "p99": 699.4,
+          "p999": 713.5
+        },
+        "vusers.session_length": {
+          "min": 10467.6,
+          "max": 10932.9,
+          "count": 920,
+          "mean": 10595.9,
+          "p50": 10617.5,
+          "median": 10617.5,
+          "p75": 10617.5,
+          "p90": 10617.5,
+          "p95": 10832,
+          "p99": 10832,
+          "p999": 10832
+        }
+      }
+    },
+    {
+      "counters": {
+        "vusers.failed": 0,
+        "vusers.completed": 1005,
+        "vusers.created_by_name.User gia nhập hàng chờ (WebSocket Mode)": 1000,
+        "vusers.created": 1000,
+        "http.requests": 1000,
+        "http.codes.202": 986,
+        "http.responses": 986,
+        "http.downloaded_bytes": 64955,
+        "plugins.metrics-by-endpoint./api/queue/test-join/EVENT_VIP.codes.202": 986
+      },
+      "rates": {
+        "http.request_rate": 100
+      },
+      "http.request_rate": null,
+      "firstCounterAt": 1776855180003,
+      "firstHistogramAt": 1776855180003,
+      "lastCounterAt": 1776855189993,
+      "lastHistogramAt": 1776855189971,
+      "firstMetricAt": 1776855180003,
+      "lastMetricAt": 1776855189993,
+      "period": "1776855180000",
+      "summaries": {
+        "vusers.session_length": {
+          "min": 10438.5,
+          "max": 10729.6,
+          "count": 1005,
+          "mean": 10546.4,
+          "p50": 10617.5,
+          "median": 10617.5,
+          "p75": 10617.5,
+          "p90": 10617.5,
+          "p95": 10617.5,
+          "p99": 10617.5,
+          "p999": 10832
+        },
+        "http.response_time": {
+          "min": 453,
+          "max": 977,
+          "count": 986,
+          "mean": 555.6,
+          "p50": 528.6,
+          "median": 528.6,
+          "p75": 561.2,
+          "p90": 632.8,
+          "p95": 871.5,
+          "p99": 944,
+          "p999": 982.6
+        },
+        "http.response_time.2xx": {
+          "min": 453,
+          "max": 977,
+          "count": 986,
+          "mean": 555.6,
+          "p50": 528.6,
+          "median": 528.6,
+          "p75": 561.2,
+          "p90": 632.8,
+          "p95": 871.5,
+          "p99": 944,
+          "p999": 982.6
+        },
+        "plugins.metrics-by-endpoint.response_time./api/queue/test-join/EVENT_VIP": {
+          "min": 453,
+          "max": 977,
+          "count": 986,
+          "mean": 555.6,
+          "p50": 528.6,
+          "median": 528.6,
+          "p75": 561.2,
+          "p90": 632.8,
+          "p95": 871.5,
+          "p99": 944,
+          "p999": 982.6
+        }
+      },
+      "histograms": {
+        "vusers.session_length": {
+          "min": 10438.5,
+          "max": 10729.6,
+          "count": 1005,
+          "mean": 10546.4,
+          "p50": 10617.5,
+          "median": 10617.5,
+          "p75": 10617.5,
+          "p90": 10617.5,
+          "p95": 10617.5,
+          "p99": 10617.5,
+          "p999": 10832
+        },
+        "http.response_time": {
+          "min": 453,
+          "max": 977,
+          "count": 986,
+          "mean": 555.6,
+          "p50": 528.6,
+          "median": 528.6,
+          "p75": 561.2,
+          "p90": 632.8,
+          "p95": 871.5,
+          "p99": 944,
+          "p999": 982.6
+        },
+        "http.response_time.2xx": {
+          "min": 453,
+          "max": 977,
+          "count": 986,
+          "mean": 555.6,
+          "p50": 528.6,
+          "median": 528.6,
+          "p75": 561.2,
+          "p90": 632.8,
+          "p95": 871.5,
+          "p99": 944,
+          "p999": 982.6
+        },
+        "plugins.metrics-by-endpoint.response_time./api/queue/test-join/EVENT_VIP": {
+          "min": 453,
+          "max": 977,
+          "count": 986,
+          "mean": 555.6,
+          "p50": 528.6,
+          "median": 528.6,
+          "p75": 561.2,
+          "p90": 632.8,
+          "p95": 871.5,
+          "p99": 944,
+          "p999": 982.6
+        }
+      }
+    },
+    {
+      "counters": {
+        "http.codes.202": 1008,
+        "http.responses": 1008,
+        "http.downloaded_bytes": 66408,
+        "plugins.metrics-by-endpoint./api/queue/test-join/EVENT_VIP.codes.202": 1008,
+        "vusers.created_by_name.User gia nhập hàng chờ (WebSocket Mode)": 958,
+        "vusers.created": 958,
+        "http.requests": 958,
+        "vusers.failed": 0,
+        "vusers.completed": 986
+      },
+      "rates": {
+        "http.request_rate": 100
+      },
+      "http.request_rate": null,
+      "firstCounterAt": 1776855190018,
+      "firstHistogramAt": 1776855190018,
+      "lastCounterAt": 1776855199979,
+      "lastHistogramAt": 1776855199979,
+      "firstMetricAt": 1776855190018,
+      "lastMetricAt": 1776855199979,
+      "period": "1776855190000",
+      "summaries": {
+        "http.response_time": {
+          "min": 465,
+          "max": 827,
+          "count": 1008,
+          "mean": 556.2,
+          "p50": 539.2,
+          "median": 539.2,
+          "p75": 572.6,
+          "p90": 632.8,
+          "p95": 671.9,
+          "p99": 772.9,
+          "p999": 804.5
+        },
+        "http.response_time.2xx": {
+          "min": 465,
+          "max": 827,
+          "count": 1008,
+          "mean": 556.2,
+          "p50": 539.2,
+          "median": 539.2,
+          "p75": 572.6,
+          "p90": 632.8,
+          "p95": 671.9,
+          "p99": 772.9,
+          "p999": 804.5
+        },
+        "plugins.metrics-by-endpoint.response_time./api/queue/test-join/EVENT_VIP": {
+          "min": 465,
+          "max": 827,
+          "count": 1008,
+          "mean": 556.2,
+          "p50": 539.2,
+          "median": 539.2,
+          "p75": 572.6,
+          "p90": 632.8,
+          "p95": 671.9,
+          "p99": 772.9,
+          "p999": 804.5
+        },
+        "vusers.session_length": {
+          "min": 10454.8,
+          "max": 10991,
+          "count": 986,
+          "mean": 10564.6,
+          "p50": 10617.5,
+          "median": 10617.5,
+          "p75": 10617.5,
+          "p90": 10617.5,
+          "p95": 10832,
+          "p99": 11050.8,
+          "p999": 11050.8
+        }
+      },
+      "histograms": {
+        "http.response_time": {
+          "min": 465,
+          "max": 827,
+          "count": 1008,
+          "mean": 556.2,
+          "p50": 539.2,
+          "median": 539.2,
+          "p75": 572.6,
+          "p90": 632.8,
+          "p95": 671.9,
+          "p99": 772.9,
+          "p999": 804.5
+        },
+        "http.response_time.2xx": {
+          "min": 465,
+          "max": 827,
+          "count": 1008,
+          "mean": 556.2,
+          "p50": 539.2,
+          "median": 539.2,
+          "p75": 572.6,
+          "p90": 632.8,
+          "p95": 671.9,
+          "p99": 772.9,
+          "p999": 804.5
+        },
+        "plugins.metrics-by-endpoint.response_time./api/queue/test-join/EVENT_VIP": {
+          "min": 465,
+          "max": 827,
+          "count": 1008,
+          "mean": 556.2,
+          "p50": 539.2,
+          "median": 539.2,
+          "p75": 572.6,
+          "p90": 632.8,
+          "p95": 671.9,
+          "p99": 772.9,
+          "p999": 804.5
+        },
+        "vusers.session_length": {
+          "min": 10454.8,
+          "max": 10991,
+          "count": 986,
+          "mean": 10564.6,
+          "p50": 10617.5,
+          "median": 10617.5,
+          "p75": 10617.5,
+          "p90": 10617.5,
+          "p95": 10832,
+          "p99": 11050.8,
+          "p999": 11050.8
+        }
+      }
+    },
+    {
+      "counters": {
+        "vusers.failed": 0,
+        "vusers.completed": 1008,
+        "http.codes.202": 16,
+        "http.responses": 16,
+        "http.downloaded_bytes": 1055,
+        "plugins.metrics-by-endpoint./api/queue/test-join/EVENT_VIP.codes.202": 16
+      },
+      "rates": {},
+      "firstCounterAt": 1776855200004,
+      "firstHistogramAt": 1776855200004,
+      "lastCounterAt": 1776855209994,
+      "lastHistogramAt": 1776855209994,
+      "firstMetricAt": 1776855200004,
+      "lastMetricAt": 1776855209994,
+      "period": "1776855200000",
+      "summaries": {
+        "vusers.session_length": {
+          "min": 10472.9,
+          "max": 10845.9,
+          "count": 1008,
+          "mean": 10569.7,
+          "p50": 10617.5,
+          "median": 10617.5,
+          "p75": 10617.5,
+          "p90": 10617.5,
+          "p95": 10617.5,
+          "p99": 10832,
+          "p999": 10832
+        },
+        "http.response_time": {
+          "min": 520,
+          "max": 569,
+          "count": 16,
+          "mean": 542.9,
+          "p50": 550.1,
+          "median": 550.1,
+          "p75": 550.1,
+          "p90": 561.2,
+          "p95": 572.6,
+          "p99": 572.6,
+          "p999": 572.6
+        },
+        "http.response_time.2xx": {
+          "min": 520,
+          "max": 569,
+          "count": 16,
+          "mean": 542.9,
+          "p50": 550.1,
+          "median": 550.1,
+          "p75": 550.1,
+          "p90": 561.2,
+          "p95": 572.6,
+          "p99": 572.6,
+          "p999": 572.6
+        },
+        "plugins.metrics-by-endpoint.response_time./api/queue/test-join/EVENT_VIP": {
+          "min": 520,
+          "max": 569,
+          "count": 16,
+          "mean": 542.9,
+          "p50": 550.1,
+          "median": 550.1,
+          "p75": 550.1,
+          "p90": 561.2,
+          "p95": 572.6,
+          "p99": 572.6,
+          "p999": 572.6
+        }
+      },
+      "histograms": {
+        "vusers.session_length": {
+          "min": 10472.9,
+          "max": 10845.9,
+          "count": 1008,
+          "mean": 10569.7,
+          "p50": 10617.5,
+          "median": 10617.5,
+          "p75": 10617.5,
+          "p90": 10617.5,
+          "p95": 10617.5,
+          "p99": 10832,
+          "p999": 10832
+        },
+        "http.response_time": {
+          "min": 520,
+          "max": 569,
+          "count": 16,
+          "mean": 542.9,
+          "p50": 550.1,
+          "median": 550.1,
+          "p75": 550.1,
+          "p90": 561.2,
+          "p95": 572.6,
+          "p99": 572.6,
+          "p999": 572.6
+        },
+        "http.response_time.2xx": {
+          "min": 520,
+          "max": 569,
+          "count": 16,
+          "mean": 542.9,
+          "p50": 550.1,
+          "median": 550.1,
+          "p75": 550.1,
+          "p90": 561.2,
+          "p95": 572.6,
+          "p99": 572.6,
+          "p999": 572.6
+        },
+        "plugins.metrics-by-endpoint.response_time./api/queue/test-join/EVENT_VIP": {
+          "min": 520,
+          "max": 569,
+          "count": 16,
+          "mean": 542.9,
+          "p50": 550.1,
+          "median": 550.1,
+          "p75": 550.1,
+          "p90": 561.2,
+          "p95": 572.6,
+          "p99": 572.6,
+          "p999": 572.6
+        }
+      }
+    },
+    {
+      "counters": {
+        "vusers.failed": 0,
+        "vusers.completed": 16
+      },
+      "rates": {},
+      "firstCounterAt": 1776855210010,
+      "firstHistogramAt": 1776855210010,
+      "lastCounterAt": 1776855210358,
+      "lastHistogramAt": 1776855210358,
+      "firstMetricAt": 1776855210010,
+      "lastMetricAt": 1776855210358,
+      "period": "1776855210000",
+      "summaries": {
+        "vusers.session_length": {
+          "min": 10524.8,
+          "max": 10585.1,
+          "count": 16,
+          "mean": 10552.3,
+          "p50": 10617.5,
+          "median": 10617.5,
+          "p75": 10617.5,
+          "p90": 10617.5,
+          "p95": 10617.5,
+          "p99": 10617.5,
+          "p999": 10617.5
+        }
+      },
+      "histograms": {
+        "vusers.session_length": {
+          "min": 10524.8,
+          "max": 10585.1,
+          "count": 16,
+          "mean": 10552.3,
+          "p50": 10617.5,
+          "median": 10617.5,
+          "p75": 10617.5,
+          "p90": 10617.5,
+          "p95": 10617.5,
+          "p99": 10617.5,
+          "p999": 10617.5
+        }
+      }
+    }
+  ]
+}

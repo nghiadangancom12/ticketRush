@@ -37,7 +37,24 @@ exports.leaveQueue = catchAsync(async (req, res) => {
   await queueService.removeAllowed(eventId, userId);
   return ResponseFactory.success(res, null, 'Đã rời khỏi hàng đợi thành công.');
 });
+exports.testJoinQueue = catchAsync(async (req, res) => {
+  const { eventId } = req.params;
+  
+  // Tự động sinh ra một userId giả (ví dụ: test_user_12345)
+  const fakeUserId = `test_user_${Math.floor(Math.random() * 100000)}`;
 
+  const isActive = await queueService.isQueueActive(eventId);
+  if (!isActive) {
+      return res.status(200).json({ status: 'no_queue' });
+  }
+
+  const result = await queueService.joinQueue(eventId, fakeUserId);
+  
+  return res.status(202).json({
+    status: 'success',
+    data: result
+  });
+});
 // Admin bật/tắt hàng đợi ảo
 exports.toggleQueue = catchAsync(async (req, res) => {
   const { eventId } = req.params;

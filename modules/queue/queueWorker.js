@@ -8,6 +8,13 @@ const SESSION_TTL_MINUTES = 15;
 class QueueWorker {
   constructor() {
     this.intervalId = null;
+    this.io = null; // Khởi tạo biến io trống
+  }
+
+  // Hàm để server.js truyền io vào
+  setIO(io) {
+    this.io = io;
+    console.log('[QueueWorker] Đã nhận kết nối Socket.io thành công!');
   }
 
   start() {
@@ -29,8 +36,7 @@ class QueueWorker {
   }
 
   async run() {
-    // 1. Vẫn dùng .keys('queue:active:*') để tìm các event đang bật queue
-    // Lệnh này chấp nhận được vì số lượng Event đang diễn ra (N) thường rất nhỏ (vài chục), không phải hàng triệu như User.
+    // 1. Tìm các event đang bật queue
     const activeKeys = await redis.keys('queue:active:*');
     
     for (const key of activeKeys) {
@@ -38,11 +44,28 @@ class QueueWorker {
       const eventId = key.split(':')[2];
 
       // 2. GỌI HÀM XỬ LÝ SIÊU TỐC TỪ QUEUE SERVICE
-      // Mọi logic đếm người (ZCARD), đuổi người (ZREMRANGEBYSCORE), lùa người (ZRANGE + Pipeline) đều được xử lý an toàn trong này.
-      const releasedCount = await queueService.processQueue(eventId, BATCH_SIZE, SESSION_TTL_MINUTES);
+      // LƯU Ý QUAN TRỌNG: Đảm bảo queueService trả về mảng các userId (luckyUsers)
+      const luckyUsers = await queueService.processQueue(eventId, BATCH_SIZE, SESSION_TTL_MINUTES);
       
-      if (releasedCount > 0) {
-         console.log(`[QueueWorker] Sự kiện ${eventId}: Đã thả ${releasedCount} người vào mua vé.`);
+      // Kiểm tra nếu có mảng trả về và mảng đó có phần tử
+      if (luckyUsers && Array.isArray(luckyUsers) && luckyUsers.length > 0) {
+         console.log(`[QueueWorker] Sự kiện ${eventId}: Đã thả ${luckyUsers.length} người vào mua vé.`);
+         
+         // ==========================================
+         // 3. BẮN THÔNG BÁO WEBSOCKET ĐẾN TỪNG NGƯỜI
+         // ==========================================
+         if (this.io) {
+            // Lấy thời gian hết hạn để gửi cho Frontend làm đồng hồ đếm ngược
+            const expireAt = Date.now() + (SESSION_TTL_MINUTES * 60 * 1000);
+
+            luckyUsers.forEach(userId => {
+              this.io.to(userId).emit('queue_turn', {
+                status: 'YOUR_TURN',
+                message: 'Đã đến lượt bạn! Hãy tiến hành chọn ghế.',
+                expireAt: expireAt
+              });
+            });
+         }
       }
     }
   }

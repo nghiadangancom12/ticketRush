@@ -12,10 +12,12 @@ class QueueService {
   }
 
   // 2. Kiểm tra Queue có đang bật không
-  async isQueueActive(eventId) {
-    const status = await redis.get(`queue:active:${eventId}`);
-    return status === "1";
-  }
+async isQueueActive(eventId) {
+  const status = await redis.get(`queue:active:${eventId}`);
+  
+  // Nâng cấp: Chấp nhận cả chuỗi "1" và chuỗi "true" (đề phòng gõ nhầm trên Upstash)
+  return status === "1" || status === "true";
+}
 
   // 3. Khách hàng xin xếp hàng (Hoặc để ping kiểm tra)
   async joinQueue(eventId, userId) {
@@ -54,7 +56,7 @@ class QueueService {
   // ==========================================
 
   // Hàm lùa người từ Hàng Đợi -> Phòng Active
-  async processQueue(eventId, batchSize = 1, ttlMinutes = 15) {
+  async processQueue(eventId, batchSize = 50, ttlMinutes = 15) {
     const now = Date.now();
     const activeKey = `queue:active_sessions:${eventId}`;
     const listKey = `queue:list:${eventId}`;
@@ -81,7 +83,7 @@ class QueueService {
         });
         await pipeline.exec();
         
-        return luckyUsers.length; // Trả về số người vừa được thả
+        return luckyUsers; // Trả về số người vừa được thả
       }
     }
     return 0; // Không thả ai

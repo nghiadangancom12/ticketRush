@@ -14,8 +14,6 @@ const queueWorker = require('./modules/queue/queueWorker');
 
 const server = http.createServer(app);
 
-// Start Queue Worker
-queueWorker.start();
 const io = new Server(server, {
   cors: { 
     origin: process.env.FRONTEND_URL || 'http://localhost:5173',
@@ -24,11 +22,29 @@ const io = new Server(server, {
   },
 });
 
+// ==========================================
+// ĐIỂM QUAN TRỌNG NHẤT VỪA ĐƯỢC THÊM VÀO:
+// Phải truyền `io` vào cho Worker trước khi nó chạy
+// ==========================================
+queueWorker.setIO(io); 
+queueWorker.start();
+// ==========================================
+
 // Gán io vào app để các route modules có thể lấy từ req.app.get('io')
 app.set('io', io);
 
 io.on('connection', (socket) => {
   console.log(`[Socket] Client connected: ${socket.id}`);
+
+  // 1. Lắng nghe Frontend gửi mã số báo danh (userId)
+  socket.on('register_user', (userId) => {
+    if (userId) {
+      // Cho user này vào một room có tên chính là userId
+      socket.join(userId);
+      console.log(`[Socket] User ${userId} đã vào phòng chờ riêng.`);
+    }
+  });
+
   socket.on('disconnect', () => {
     console.log(`[Socket] Client disconnected: ${socket.id}`);
   });
