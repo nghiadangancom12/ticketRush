@@ -30,3 +30,4 @@ scenarios:
       # Sau khi POST thành công, User ảo sẽ "đứng đợi" 
       # Điều này mô phỏng việc User giữ kết nối Socket mà không spam API
       - think: 10
+      # test bằng lệnh sau artillery run --record --key <Artillery apikey> queue-test.yml

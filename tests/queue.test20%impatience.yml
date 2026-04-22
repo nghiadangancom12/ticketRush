@@ -1,0 +1,43 @@
+config:
+  target: "http://localhost:3000"
+  
+  phases:
+    - duration: 60
+      arrivalRate: 10
+      rampTo: 100
+      name: "Giai đoạn tăng tốc (Ramp-up)"
+
+    - duration: 30
+      arrivalRate: 100
+      name: "Giai đoạn chịu tải cao (Sustain)"
+
+  defaults:
+    headers:
+      Content-Type: "application/json"
+
+scenarios:
+  - name: "80% - Người dùng kiên nhẫn (Chỉ vào hàng chờ 1 lần)"
+    weight: 80
+    flow:
+      - post:
+          url: "/api/queue/test-join/EVENT_VIP"
+          headers:
+            x-user-id: "{{ $uuid }}"
+          capture:
+            - json: "$.data.position"
+              as: "userPosition"
+          expect:
+            - statusCode: 202
+      - think: 15 # Đứng chờ tín hiệu WebSocket
+
+  - name: "20% - Người dùng thiếu kiên nhẫn (F5 liên tục)"
+    weight: 20
+    flow:
+      - loop:
+          - post:
+              url: "/api/queue/test-join/EVENT_VIP"
+              headers:
+                x-user-id: "{{ $uuid }}"
+              # Lưu ý: Lần 1-3 sẽ trả về 202, từ lần 4 trở đi trong 10s sẽ trả về 429
+          - think: 1 # Giả lập 1 giây nhấn F5 một lần
+        count: 6 # Tổng cộng 6 lần nhấn trong vòng ~6 giây
