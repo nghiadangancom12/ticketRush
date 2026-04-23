@@ -14,6 +14,8 @@ tags:
     description: Event management
   - name: Seats
     description: Seat reservation and booking
+  - name: Booking
+    description: Giữ ghế, thanh toán và trả ghế
   - name: Customers
     description: Customer purchase history
   - name: Admin
@@ -562,3 +564,201 @@ paths:
       responses:
         '200':
           description: Cập nhật cấu hình queue thành công
+
+  /api/Booking/return:
+    post:
+      tags: [Booking]
+      summary: Trả ghế và giải phóng slot hàng chờ
+      description: |
+        Nhả toàn bộ ghế đang ở trạng thái `LOCKED` về `AVAILABLE` và giải phóng
+        slot trong Virtual Queue để người tiếp theo được vào.
+
+        ### Khi nào gọi API này?
+        Gọi API này khi **người dùng chủ động hủy** quá trình đặt vé, ví dụ:
+        - Bấm nút "← Huỷ & Quay Lại Chọn Ghế" trên trang Checkout.
+        - Bấm nút "Huỷ" / "Quay lại" ở bất kỳ bước nào trước khi thanh toán xong.
+
+        ### Lưu ý quan trọng cho Frontend
+        > ⚠️ **KHÔNG** gọi API này khi điều hướng từ trang EventDetail sang trang Checkout.
+        > Khi user bấm "Giữ Chỗ & Thanh Toán", frontend cần dùng một **flag nội bộ**
+        > (ví dụ: `isNavigatingToCheckout = true`) để tránh hàm cleanup của component
+        > gọi `/return` nhầm trong lúc React unmount component.
+
+        ### Kết quả
+        - Ghế về `AVAILABLE`, hiển thị lại trên sơ đồ ghế cho người khác.
+        - Slot hàng chờ (queue slot) được giải phóng → Worker sẽ kéo người tiếp theo vào.
+        - Frontend nên điều hướng về `/event/:id/queue` sau khi gọi thành công.
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - eventId
+              properties:
+                eventId:
+                  type: string
+                  example: "a1b2c3d4-0000-0000-0000-000000000001"
+                  description: ID sự kiện chứa các ghế cần trả
+      responses:
+        '200':
+          description: Trả ghế thành công
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "success"
+                  message:
+                    type: string
+                    example: "Đã trả 2 ghế thành công."
+                  data:
+                    type: object
+                    properties:
+                      releasedCount:
+                        type: integer
+                        example: 2
+                        description: Số ghế đã được nhả về AVAILABLE
+        '401':
+          description: Chưa đăng nhập (token không hợp lệ hoặc thiếu)
+
+  /api/queue/{eventId}/heartbeat:
+    post:
+      tags: [Queue]
+      summary: Gia hạn phiên hoạt động trong Virtual Queue
+      description: |
+        Gia hạn thẻ bài (session) trong Redis thêm **20 giây** mỗi lần ping,
+        giữ cho người dùng không bị đuổi ra khỏi phòng mua vé vì hết thời gian chờ.
+
+        ---
+
+        ## 📘 Hướng dẫn tích hợp cho Frontend
+
+        ### Nguyên lý hoạt động
+        Sau khi được phép vào phòng mua vé (`status: allowed`), Redis cấp một
+        "thẻ bài" với TTL = **20 giây**. Nếu Frontend không ping lại trước khi thẻ hết hạn,
+        người dùng sẽ bị tự động đuổi ra và slot nhường cho người tiếp theo.
+
+        ### Quy tắc ping
+        | Trang đang ở               | Có nên ping? | Interval khuyến nghị |
+        |----------------------------|:------------:|----------------------|
+        | `/event/:id` (chọn ghế)   | ✅ Bắt buộc  | mỗi **15 giây**      |
+        | `/checkout` (thanh toán)  | ✅ Bắt buộc  | mỗi **12 giây**      |
+        | `/event/:id/queue` (chờ)  | ❌ Không cần | —                    |
+
+        ### Cách triển khai (React)
+        ```javascript
+        // Đặt trong useEffect của trang EventDetail VÀ CheckoutPage
+        const heartbeatRef = useRef(null);
+
+        useEffect(() => {
+          if (!eventId || !token) return;
+
+          const ping = async () => {
+            try {
+              await axios.post(
+                `/api/queue/${eventId}/heartbeat`,
+                {},
+                { headers: { Authorization: `Bearer ${token}` } }
+              );
+            } catch (err) {
+              if (err.response?.status === 410) {
+                // Session hết hạn hoàn toàn → đuổi về hàng chờ
+                clearInterval(heartbeatRef.current);
+                navigate(`/event/${eventId}/queue`);
+              }
+              // Lỗi mạng tạm thời (5xx, network error) → bỏ qua, thử lại lần sau
+            }
+          };
+
+          ping(); // Ping ngay khi mount để gia hạn tức thì
+          heartbeatRef.current = setInterval(ping, 12000); // 12s cho checkout, 15s cho chọn ghế
+
+          return () => clearInterval(heartbeatRef.current); // Dọn dẹp khi unmount
+        }, [eventId, token]);
+        ```
+
+        ### Xử lý phản hồi từ server
+        | HTTP Status | Ý nghĩa                                               | Hành động Frontend               |
+        |-------------|-------------------------------------------------------|----------------------------------|
+        | `200 OK`    | Ping thành công, session được gia hạn thêm 20s        | Không làm gì, tiếp tục polling   |
+        | `410 Gone`  | Session đã hết hạn (mất kết nối quá lâu hoặc timeout 10 phút) | Dừng interval, điều hướng về `/event/:id/queue` |
+        | `401`       | Token không hợp lệ                                    | Điều hướng về `/auth`            |
+
+        ### Hard Timeout (10 phút)
+        Ngoài TTL 20s, mỗi session có giới hạn tuyệt đối là **10 phút** tính từ lúc được cấp.
+        Ngay cả khi ping đều đặn, sau 10 phút session sẽ bị thu hồi (`reason: TIMEOUT`).
+        Response body sẽ có thêm trường `hardTimeoutLeft` (milliseconds còn lại) để Frontend
+        hiển thị đồng hồ đếm ngược cho người dùng.
+
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      parameters:
+        - name: eventId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: ID sự kiện mà user đang giữ slot
+      responses:
+        '200':
+          description: Session được gia hạn thành công
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "success"
+                  message:
+                    type: string
+                    example: "Phiên hoạt động đã được gia hạn."
+                  data:
+                    type: object
+                    properties:
+                      alive:
+                        type: boolean
+                        example: true
+                      expiresAt:
+                        type: integer
+                        example: 1745425210000
+                        description: Unix timestamp (ms) khi thẻ bài hết hạn (20s kể từ lúc ping)
+                      hardTimeoutLeft:
+                        type: integer
+                        example: 487000
+                        description: |
+                          Số milliseconds còn lại của giới hạn 10 phút tuyệt đối.
+                          Frontend dùng để hiển thị đồng hồ đếm ngược.
+                          Ví dụ: 487000ms ≈ 8 phút 7 giây còn lại.
+        '410':
+          description: |
+            Session đã hết hạn — người dùng bị đuổi ra khỏi phòng.
+
+            **Frontend phải:** Dừng interval heartbeat và điều hướng về `/event/:id/queue`.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "fail"
+                  reason:
+                    type: string
+                    enum: [DISCONNECTED, TIMEOUT]
+                    description: |
+                      - `DISCONNECTED`: Mất kết nối quá 20 giây (không ping kịp thời)
+                      - `TIMEOUT`: Đã hết 10 phút giới hạn tuyệt đối
+                  message:
+                    type: string
+                    example: "Phiên giao dịch mất kết nối quá lâu. Vui lòng quay lại hàng chờ."
+        '401':
+          description: Token không hợp lệ hoặc thiếu

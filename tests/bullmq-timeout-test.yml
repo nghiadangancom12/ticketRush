@@ -1,0 +1,26 @@
+config:
+  target: "http://localhost:3000"
+  
+  phases:
+    - duration: 20          # Chạy trong 20 giây
+      arrivalRate: 25       # 25 người mới mỗi giây (Tổng: 500 người)
+      name: "Chiến dịch Giữ chỗ dạo - Nhồi 500 delayed jobs vào Queue trong 20s"
+
+  defaults:
+    headers:
+      Content-Type: "application/json"
+
+scenarios:
+  - name: "Giả lập giữ ghế thành công nhưng không ai chịu thanh toán (Đợi 1 phút để test Timeout)"
+    flow:
+      - post:
+          url: "/api/Booking/test-hold-stress"
+          # Bổ sung JSON body với UUID chuẩn
+          json:
+            eventId: "{{ $uuid }}"   # Giả lập Event ID đúng định dạng UUID
+            userId: "{{ $uuid }}"    # Giả lập User ID đúng định dạng UUID
+            seatIds: ["{{ $uuid }}"] # Mảng Seat ID đúng định dạng UUID
+          expect:
+            - statusCode: 201
+      
+      # Test lệnh: artillery run --record --key <Artillery_Key> tests/bullmq-timeout-test.yml

@@ -64,3 +64,37 @@ exports.toggleQueue = catchAsync(async (req, res) => {
   const statusStr = isActive ? 'Bật' : 'Tắt';
   return ResponseFactory.success(res, result, `Đã ${statusStr} Virtual Queue cho sự kiện ${eventId}`);
 });
+
+/**
+ * POST /api/queue/:eventId/heartbeat
+ * Frontend gọi mỗi 15 giây khi đang trên trang chọn ghế.
+ * Nếu không ping -> session hết hạn sau 20s -> người tiếp theo được vào.
+ * Trả về 410 Gone nếu session đã bị đuổi (để frontend biết và điều hướng về queue).
+ */
+exports.heartbeat = catchAsync(async (req, res) => {
+  const { eventId } = req.params;
+  const userId = req.user.id;
+
+  const result = await queueService.heartbeat(eventId, userId);
+
+  if (!result.alive) {
+    // 1. Phân loại lời nhắn dựa trên lý do "tử hình" từ QueueService
+    const customMessage = result.reason === 'TIMEOUT'
+      ? 'Đã hết thời gian 10 phút giữ ghế. Vui lòng quay lại hàng chờ.'
+      : 'Phiên giao dịch mất kết nối quá lâu. Vui lòng quay lại hàng chờ.';
+
+    // Trả về 410 Gone kèm theo lý do cụ thể
+    return res.status(410).json({
+      status: 'fail',
+      reason: result.reason, // Frontend có thể dùng biến này để log lỗi
+      message: customMessage
+    });
+  }
+
+  // 2. Trả thêm hardTimeoutLeft về cho Frontend cập nhật đồng hồ
+  return ResponseFactory.success(res, {
+    alive: true,
+    expiresAt: result.expiresAt,         // Hạn của nhịp tim (20s)
+    hardTimeoutLeft: result.hardTimeoutLeft // Số mili-giây còn lại của 10 phút
+  }, 'Phiên hoạt động đã được gia hạn.');
+});

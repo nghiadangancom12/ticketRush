@@ -15,23 +15,42 @@ const { holdSeatsSchema, checkoutSchema } = require('./BookingSchema');
 // Ở chế độ TEST SẬP DB (Bỏ qua bảo vệ để stress test trực tiếp vào DB)
  // Ở chế độ TEST SẬP DB (Bỏ qua bảo vệ để stress test trực tiếp vào DB)
 router.post('/hold', 
-  // 1. Validate body (Nghĩa nhớ kiểm tra xem holdSeatsSchema có cho phép truyền userId trong body không nhé)
-  validate(holdSeatsSchema), 
-  
-  // 2. MIDDLEWARE GIẢ LẬP (Fake Auth)
-  (req, res, next) => {
-    // Tự động tạo req.user lấy ID từ cục JSON của Artillery bắn lên
-    req.user = { 
-      id: req.body.userId 
-    };
-    next();
-  },
-  
-  // 3. Controller xử lý
+ verifyToken, verifyQueueAccess,validate(holdSeatsSchema),
   BookingController.holdSeats
 );
 
 // 2. API Thanh toán
 router.post('/checkout', verifyToken, verifyQueueAccess, validate(checkoutSchema), BookingController.checkout);
+
+// 3. API Trả ghế (Hủy giữ chỗ + Giải phóng queue slot cho người tiếp theo)
+router.post('/return', verifyToken, BookingController.returnSeats);
+
+// 3. API TEST: Dành riêng cho kịch bản bullmq-stress-test.yml (Bỏ qua DB, nhồi thẳng vào Queue)
+router.post('/test-email-stress', async (req, res, next) => {
+  try {
+    const { emailQueue } = require('../jobs/queues');
+    
+    // 1. Hứng dữ liệu từ kịch bản Artillery (hoặc Postman)
+    // Nếu không có, dự phòng bằng dữ liệu ngẫu nhiên để không bị sập
+    const email = req.body.email || `khachhang_${Math.floor(Math.random() * 1000)}@gmail.com`;
+    const orderId = req.body.orderId || ('TEST-ORDER-' + Math.floor(Math.random() * 1000000));
+    
+    // 2. Nhồi đầy đủ cả orderId và email vào Queue
+    await emailQueue.add('send-ticket-email', {
+      orderId: orderId,
+      email: email // THÊM DÒNG NÀY LÀ CỰC KỲ QUAN TRỌNG
+    }, {
+      attempts: 3,
+      backoff: { type: 'exponential', delay: 2000 }
+    });
+
+    res.status(201).json({ 
+      status: 'success', 
+      message: `Đã nhồi job gửi email cho ${email} (Order: ${orderId}).` 
+    });
+  } catch (err) {
+    next(err);
+  }
+});
 
 module.exports = router;

@@ -1,0 +1,25 @@
+config:
+  target: "http://localhost:3000"
+  
+  phases:
+    # Flash Sale: 500 người ập vào trong 5 giây (100 người/giây)
+    - duration: 5
+      arrivalRate: 100
+      name: "Flash Sale - Đỉnh tải tranh chấp (Lock Contention)"
+
+  defaults:
+    headers:
+      Content-Type: "application/json"
+
+scenarios:
+  - name: "500 người tranh nhau 1 ghế VIP"
+    flow:
+      # Mình tạm bỏ bước GET sơ đồ ghế đi để dồn 100% hỏa lực test Database
+      # Nếu để GET, nó sẽ làm loãng thời gian request POST đập vào DB
+      
+      - post:
+          url: "/api/Booking/hold" # Đã sửa đúng với Router thực tế của Nghĩa
+          json:
+            eventId: "EVENT_123" # Đảm bảo ID này TỒN TẠI trong Database của bạn
+            userId: "{{ $uuid }}" # Đưa UUID vào body để Fake Auth Middleware lúc nãy đọc được
+            seatIds: ["SEAT_001"] # Schema của Nghĩa yêu cầu mảng (array) các ghế

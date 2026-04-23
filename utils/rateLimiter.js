@@ -1,24 +1,40 @@
-const rateLimit = require('express-rate-limit');
+// Sửa lại dòng import: Lấy cả rateLimit và ipKeyGenerator từ thư viện
+const { rateLimit, ipKeyGenerator } = require('express-rate-limit');
 const { RedisStore } = require('rate-limit-redis');
-const redis = require('../config/redis'); // 👉 File cấu hình Redis của Nghĩa
+const redis = require('../config/redis');
 
 const joinQueueLimiter = rateLimit({
-  // Sử dụng Redis để lưu trữ số lần request
   store: new RedisStore({
     sendCommand: (...args) => redis.call(...args),
   }),
   
-  windowMs: 10 * 1000, // ⏳ Khoảng thời gian: 10 giây
-  max: 3,              // 🚫 Giới hạn: Tối đa 3 lần request trong 10 giây
+  windowMs: 10 * 1000, 
+  max: 3,              
   
-  // Cách định danh người dùng: 
-  // Nếu có userId (đã đăng nhập) thì dùng userId, nếu không dùng IP
- keyGenerator: (req) => {
-  // Nếu có header 'x-user-id' từ Artillery gửi lên thì dùng, không thì mới dùng IP
-  return req.headers['x-user-id'] || req.ip; 
-},
+  keyGenerator: (req, res) => {
+    // 1. KÊNH WEB: Cookie 
+    if (req.cookies && req.cookies.sessionId) {
+      return `cookie_${req.cookies.sessionId}`; 
+    }
 
-  // Phản hồi khi người dùng bị "chặn"
+    // 2. KÊNH MOBILE / POSTMAN: Bearer Token
+    const authHeader = req.headers['authorization'] || req.headers['Authorization'];
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      const token = authHeader.split(' ')[1];
+      return `token_${token}`;
+    }
+
+    // 3. KÊNH TEST (ARTILLERY): Header giả lập
+    if (req.headers['x-user-id']) {
+      return `test_${req.headers['x-user-id']}`;
+    }
+
+    // 4. KÊNH KHÁCH VÃNG LAI: 
+    // KHÔNG dùng req.ip nữa để không bị thư viện bắt lỗi.
+    // Trực tiếp đưa req và res cho hàm chuẩn của thư viện tự xử lý IP an toàn!
+    return ipKeyGenerator(req, res);
+  },
+
   handler: (req, res) => {
     res.status(429).json({
       status: 'error',
@@ -26,8 +42,8 @@ const joinQueueLimiter = rateLimit({
     });
   },
   
-  standardHeaders: true, // Trả về thông tin giới hạn trong header RateLimit-*
-  legacyHeaders: false,  // Tắt X-RateLimit-* cũ
+  standardHeaders: true,
+  legacyHeaders: false,
 });
 
 module.exports = joinQueueLimiter;

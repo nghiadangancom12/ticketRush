@@ -1,22 +1,23 @@
 const Redis = require('ioredis');
 
-const redisOptions = process.env.REDIS_URL 
-  ? process.env.REDIS_URL 
-  : {
-      host: process.env.REDIS_HOST || '127.0.0.1',
-      port: process.env.REDIS_PORT || 6379,
-    };
+// Kiểm tra xem URL có yêu cầu bảo mật SSL/TLS không
+const isTls = process.env.REDIS_URL?.startsWith('rediss://');
 
-// Khởi tạo đối tượng kết nối
-const redis = new Redis(redisOptions);
+// Nếu có REDIS_URL, nhét thêm option tls vào tham số thứ 2
+const redis = process.env.REDIS_URL
+  ? new Redis(process.env.REDIS_URL, isTls ? { tls: {} } : {})
+  : new Redis({
+      host: process.env.REDIS_HOST || '127.0.0.1',
+      port: Number(process.env.REDIS_PORT) || 6379,
+    });
 
 // Bắt sự kiện để biết Redis đã kết nối thành công hay chưa
 redis.on('connect', () => {
-  console.log('🔥 Đã kết nối thành công tới Redis Server!');
+  console.log('🔥 [Cache] Đã kết nối thành công tới Redis Server!');
 });
 
 redis.on('error', (error) => {
-  console.error('❌ Lỗi kết nối Redis:', error);
+  console.error('❌ [Cache] Lỗi kết nối Redis:', error.message);
 });
 
 module.exports = redis;

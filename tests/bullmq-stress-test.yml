@@ -1,0 +1,24 @@
+config:
+  target: "http://localhost:3000"
+  
+  phases:
+    - duration: 10          # Chạy trong 10 giây
+      arrivalRate: 50       # 50 người mới mỗi giây (Tổng: 500 người)
+      name: "Nhồi 500 email jobs vào Queue trong 10s"
+
+  defaults:
+    headers:
+      Content-Type: "application/json"
+
+scenarios:
+  - name: "Giả lập thanh toán thành công và gửi mail"
+    flow:
+      - post:
+          url: "/api/Booking/test-email-stress"
+          # 👇 BỔ SUNG DỮ LIỆU GIẢ LẬP VÀO ĐÂY
+          json:
+            email: "khachhang_{{ $uuid }}@gmail.com"
+            orderId: "ORDER_{{ $uuid }}"
+          # Kỳ vọng mã 201 trả về (Đã nhồi xong)
+          expect:
+            - statusCode: 201

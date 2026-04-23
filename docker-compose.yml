@@ -1,0 +1,66 @@
+version: '3.8'
+
+services:
+  # 1. Cơ sở dữ liệu PostgreSQL
+  db:
+    image: postgres:15-alpine
+    container_name: ticketrush-db
+    restart: always
+    environment:
+      # Thông số này khớp 100% với DATABASE_URL trong file .env
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: "12072005"
+      POSTGRES_DB: ticketRush
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  # 2. Redis Local (Chạy tẹt ga không lo hết request)
+  redis:
+    image: redis:7-alpine
+    container_name: ticketrush-redis
+    restart: always
+    ports:
+      - "6379:6379"
+
+  # 3. API Server chính
+  api:
+    build: .
+    container_name: ticketrush-api
+    restart: always
+    ports:
+      - "3000:3000"
+    # 👇 Tự động nạp TOÀN BỘ file .env vào container này
+    env_file: 
+      - .env
+    depends_on:
+      - db
+      - redis
+
+  # 4. Worker xử lý Email (Dùng chung .env để lấy cấu hình Mailtrap)
+  worker-email:
+    build: .
+    container_name: ticketrush-worker-email
+    restart: always
+    command: ["node", "modules/jobs/workers/emailWorker.js"]
+    env_file:
+      - .env
+    depends_on:
+      - redis
+      - db
+
+  # 5. Worker xử lý Nhả ghế
+  worker-seat-release:
+    build: .
+    container_name: ticketrush-worker-release
+    restart: always
+    command: ["node", "modules/jobs/workers/seatReleaseWorker.js"]
+    env_file:
+      - .env
+    depends_on:
+      - redis
+      - db
+
+volumes:
+  postgres_data:

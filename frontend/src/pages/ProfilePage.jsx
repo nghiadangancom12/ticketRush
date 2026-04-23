@@ -4,28 +4,17 @@ import axios from 'axios';
 import './ProfilePage.css';
 
 const API = 'http://localhost:3000/api';
-
 const GENDER_LABELS = { MALE: 'Nam', FEMALE: 'Nữ', OTHER: 'Khác' };
 
 function AvatarDisplay({ name, avatarUrl, size = 80 }) {
-  const initials = name
-    ? name.split(' ').map(w => w[0]).slice(-2).join('').toUpperCase()
-    : '?';
-
+  const initials = name ? name.split(' ').map(w => w[0]).slice(-2).join('').toUpperCase() : '?';
   if (avatarUrl) {
     return (
-      <img
-        src={avatarUrl}
-        alt="avatar"
-        style={{
-          width: size, height: size, borderRadius: '50%',
-          objectFit: 'cover', border: '3px solid var(--primary)'
-        }}
-        onError={e => { e.target.style.display = 'none'; }}
-      />
+      <img src={avatarUrl} alt="avatar"
+        style={{ width: size, height: size, borderRadius: '50%', objectFit: 'cover', border: '3px solid var(--primary)' }}
+        onError={e => { e.target.style.display = 'none'; }} />
     );
   }
-
   return (
     <div style={{
       width: size, height: size, borderRadius: '50%',
@@ -33,50 +22,42 @@ function AvatarDisplay({ name, avatarUrl, size = 80 }) {
       display: 'flex', alignItems: 'center', justifyContent: 'center',
       fontSize: size * 0.35, fontWeight: 700, color: '#fff',
       border: '3px solid var(--primary)', flexShrink: 0
-    }}>
-      {initials}
-    </div>
+    }}>{initials}</div>
   );
 }
 
 export default function ProfilePage() {
   const navigate = useNavigate();
-  const [data, setData] = useState(null);
+  const [profile, setProfile] = useState(null);
+  const [orders, setOrders] = useState([]);
+  const [lockedSeats, setLockedSeats] = useState([]);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({});
-  const [avatarUrl, setAvatarUrl] = useState('');
   const [avatarInput, setAvatarInput] = useState('');
   const [msg, setMsg] = useState({ type: '', text: '' });
 
   const token = localStorage.getItem('token');
 
-  useEffect(() => {
-    if (!token) { navigate('/auth'); return; }
-    // Load saved avatar from localStorage
-    const saved = localStorage.getItem('avatarUrl') || '';
-    setAvatarUrl(saved);
-    setAvatarInput(saved);
-
-    fetchProfile();
-  }, []);
-
-  const fetchProfile = async () => {
+  const fetchAll = async () => {
     try {
-      const res = await axios.get(`${API}/customers/me`, {
+      // 1. Profile from /api/users/me
+      const profileRes = await axios.get(`${API}/users/me`, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      const { profile, orders, lockedSeats } = res.data.data;
-      setData({ profile, orders, lockedSeats });
-      setForm({
-        full_name: profile.full_name || '',
-        date_of_birth: profile.date_of_birth ? profile.date_of_birth.split('T')[0] : '',
-        gender: profile.gender || ''
+      const p = profileRes.data.data;
+      setProfile(p);
+      setForm({ full_name: p.full_name || '', date_of_birth: p.date_of_birth ? p.date_of_birth.split('T')[0] : '', gender: p.gender || '' });
+      setAvatarInput(p.avatar_url || '');
+      if (p.avatar_url) localStorage.setItem('avatarUrl', p.avatar_url);
+
+      // 2. Purchase history from /api/customers/purchaseHistory
+      const histRes = await axios.get(`${API}/customers/purchaseHistory`, {
+        headers: { Authorization: `Bearer ${token}` }
       });
-      // Set avatar từ database
-      setAvatarUrl(profile.avatar_url || '');
-      setAvatarInput(profile.avatar_url || '');
+      setOrders(histRes.data.data?.orders || []);
+      setLockedSeats(histRes.data.data?.lockedSeats || []);
     } catch (err) {
       if (err.response?.status === 401 || err.response?.status === 403) navigate('/auth');
     } finally {
@@ -84,20 +65,22 @@ export default function ProfilePage() {
     }
   };
 
+  useEffect(() => {
+    if (!token) { navigate('/auth'); return; }
+    fetchAll();
+  }, []);
+
   const handleSave = async () => {
-    setSaving(true);
-    setMsg({ type: '', text: '' });
+    setSaving(true); setMsg({ type: '', text: '' });
     try {
-      const payloadToSend = { ...form, avatar_url: avatarInput };
-      const res = await axios.patch(`${API}/customers/me`, payloadToSend, {
+      const res = await axios.patch(`${API}/users/me`, { ...form, avatar_url: avatarInput }, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      // Save avatar to state and localStorage
+      setProfile(res.data.data);
       localStorage.setItem('avatarUrl', avatarInput);
-      setAvatarUrl(avatarInput);
-      setData(prev => ({ ...prev, profile: res.data.data }));
+      localStorage.setItem('userName', res.data.data.full_name);
       setEditing(false);
-      setMsg({ type: 'success', text: 'Cập nhật thành công!' });
+      setMsg({ type: 'success', text: '✅ Cập nhật thành công!' });
     } catch (err) {
       setMsg({ type: 'error', text: err.response?.data?.message || 'Có lỗi xảy ra.' });
     } finally {
@@ -105,46 +88,27 @@ export default function ProfilePage() {
     }
   };
 
-  if (loading) return <div className="text-center mt-8">Đang tải...</div>;
-  if (!data) return null;
-
-  const { profile, orders, lockedSeats } = data;
+  if (loading) return <div className="text-center mt-8">Đang tải hồ sơ...</div>;
+  if (!profile) return null;
 
   return (
     <div className="profile-page">
-      {/* Header Card */}
+      {/* Header */}
       <div className="profile-header glass-panel">
         <div className="profile-avatar-wrap">
-          <AvatarDisplay name={profile.full_name} avatarUrl={avatarUrl} size={100} />
+          <AvatarDisplay name={profile.full_name} avatarUrl={avatarInput || profile.avatar_url} size={100} />
           {editing && (
             <div className="avatar-edit-wrap">
-              <input
-                type="text"
-                className="form-input"
-                placeholder="URL ảnh đại diện..."
-                value={avatarInput}
-                onChange={e => setAvatarInput(e.target.value)}
-                style={{ fontSize: '0.8rem', padding: '0.4rem 0.75rem' }}
-              />
-              {avatarInput && (
-                <img src={avatarInput} alt="preview"
-                  style={{ width: 40, height: 40, borderRadius: '50%', objectFit: 'cover', border: '2px solid var(--primary)' }}
-                  onError={e => e.target.style.display = 'none'}
-                />
-              )}
+              <input type="text" className="form-input" placeholder="URL ảnh đại diện..." value={avatarInput}
+                onChange={e => setAvatarInput(e.target.value)} style={{ fontSize: '0.8rem', padding: '0.4rem 0.75rem' }} />
             </div>
           )}
         </div>
-
         <div className="profile-info">
           {editing ? (
-            <input
-              type="text"
-              className="form-input"
-              value={form.full_name}
+            <input type="text" className="form-input" value={form.full_name}
               onChange={e => setForm({ ...form, full_name: e.target.value })}
-              style={{ fontSize: '1.4rem', fontWeight: 700, marginBottom: '0.5rem' }}
-            />
+              style={{ fontSize: '1.4rem', fontWeight: 700, marginBottom: '0.5rem' }} />
           ) : (
             <h2 style={{ fontSize: '1.6rem', marginBottom: '0.25rem' }}>{profile.full_name}</h2>
           )}
@@ -155,16 +119,11 @@ export default function ProfilePage() {
             <span className="badge badge-neutral">{profile.email}</span>
           </div>
         </div>
-
         <div className="profile-actions">
           {editing ? (
             <>
-              <button className="btn btn-primary" onClick={handleSave} disabled={saving}>
-                {saving ? 'Đang lưu...' : '💾 Lưu'}
-              </button>
-              <button className="btn btn-outline" onClick={() => { setEditing(false); setMsg({ type: '', text: '' }); }}>
-                Huỷ
-              </button>
+              <button className="btn btn-primary" onClick={handleSave} disabled={saving}>{saving ? 'Đang lưu...' : '💾 Lưu'}</button>
+              <button className="btn btn-outline" onClick={() => { setEditing(false); setMsg({ type: '', text: '' }); }}>Huỷ</button>
             </>
           ) : (
             <button className="btn btn-primary" onClick={() => setEditing(true)}>✏️ Chỉnh sửa</button>
@@ -172,20 +131,17 @@ export default function ProfilePage() {
         </div>
       </div>
 
-      {msg.text && (
-        <div className={`alert-msg ${msg.type}`}>{msg.text}</div>
-      )}
+      {msg.text && <div className={`alert-msg ${msg.type}`}>{msg.text}</div>}
 
       <div className="profile-grid">
-        {/* Thông tin cá nhân */}
+        {/* Personal Info */}
         <div className="glass-panel">
           <h3 className="section-title">📋 Thông Tin Cá Nhân</h3>
           <div className="info-table">
             <div className="info-row">
               <span className="info-label">Ngày sinh</span>
               {editing ? (
-                <input type="date" className="form-input" value={form.date_of_birth}
-                  onChange={e => setForm({ ...form, date_of_birth: e.target.value })} />
+                <input type="date" className="form-input" value={form.date_of_birth} onChange={e => setForm({ ...form, date_of_birth: e.target.value })} />
               ) : (
                 <span>{profile.date_of_birth ? new Date(profile.date_of_birth).toLocaleDateString('vi-VN') : 'Chưa cập nhật'}</span>
               )}
@@ -205,7 +161,7 @@ export default function ProfilePage() {
             </div>
             <div className="info-row">
               <span className="info-label">Ngày tham gia</span>
-              <span>{new Date(profile.created_at).toLocaleDateString('vi-VN')}</span>
+              <span>{profile.created_at ? new Date(profile.created_at).toLocaleDateString('vi-VN') : '—'}</span>
             </div>
             <div className="info-row">
               <span className="info-label">Tổng đơn hàng</span>
@@ -214,7 +170,7 @@ export default function ProfilePage() {
           </div>
         </div>
 
-        {/* Ghế đang giữ */}
+        {/* Locked Seats */}
         <div className="glass-panel">
           <h3 className="section-title">⏳ Ghế Đang Giữ ({lockedSeats.length})</h3>
           {lockedSeats.length === 0 ? (
@@ -244,7 +200,7 @@ export default function ProfilePage() {
         </div>
       </div>
 
-      {/* Lịch sử đơn hàng */}
+      {/* Order History */}
       <div className="glass-panel mt-4">
         <h3 className="section-title">🎫 Lịch Sử Đặt Vé ({orders.length})</h3>
         {orders.length === 0 ? (
@@ -255,13 +211,13 @@ export default function ProfilePage() {
               <div key={order.id} className="order-card">
                 <div className="order-header">
                   <span style={{ fontWeight: 600, fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
-                    Mã đơn: <span style={{ color: 'var(--primary)', fontFamily: 'monospace' }}>{order.id.slice(0, 8)}...</span>
+                    Mã đơn: <span style={{ color: 'var(--primary)', fontFamily: 'monospace' }}>{order.id.slice(0, 8).toUpperCase()}...</span>
                   </span>
                   <span className={`order-status ${order.status.toLowerCase()}`}>{order.status}</span>
-                  <span style={{ fontWeight: 700, color: 'var(--success)' }}>${Number(order.total_amount).toLocaleString()}</span>
+                  <span style={{ fontWeight: 700, color: 'var(--success)' }}>{Number(order.total_amount).toLocaleString('vi-VN')}đ</span>
                 </div>
                 <div className="order-tickets">
-                  {order.tickets.map(ticket => (
+                  {order.tickets?.map(ticket => (
                     <div key={ticket.id} className="ticket-chip">
                       🪑 {ticket.seats?.zones?.name} — {ticket.seats?.row_label}{ticket.seats?.seat_number}
                     </div>
