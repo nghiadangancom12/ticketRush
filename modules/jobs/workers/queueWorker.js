@@ -8,9 +8,10 @@ const SESSION_TTL_SECONDS = 20;
 const HARD_TIMEOUT_MINUTES = 1; 
 
 class QueueWorker {
-  constructor() {
-    this.intervalId = null;
+ constructor() {
+    this.timeoutId = null;
     this.io = null;
+    this.isRunning = false; // Thêm cờ trạng thái
   }
 
   setIO(io) {
@@ -19,29 +20,39 @@ class QueueWorker {
   }
 
   start() {
-    this.intervalId = setInterval(async () => {
-      try {
-        await this.run();
-      } catch (err) {
-        console.error('QueueWorker Error:', err);
-      }
-    }, 5000);
-    console.log('🚀 Background QueueWorker started! Giám sát mỗi 5 giây.');
+    this.isRunning = true;
+    this.loop(); // Bắt đầu vòng lặp
+    console.log('🚀 Background QueueWorker started! Giám sát an toàn với setTimeout.');
   }
 
   stop() {
-    if (this.intervalId) {
-      clearInterval(this.intervalId);
+    this.isRunning = false;
+    if (this.timeoutId) {
+      clearTimeout(this.timeoutId);
       console.log('🛑 QueueWorker stopped.');
     }
   }
 
-  async run() {
-    const activeKeys = await redis.keys('queue:active:*');
-    
-    for (const key of activeKeys) {
-      const eventId = key.split(':')[2];
+  // Tạo một hàm loop() riêng biệt
+  async loop() {
+    if (!this.isRunning) return; // Dừng lại nếu đã gọi hàm stop()
 
+    try {
+      await this.run(); // Đợi hàm run() xử lý xong HOÀN TOÀN
+    } catch (err) {
+      console.error('QueueWorker Error:', err);
+    } finally {
+      // Dù thành công hay thất bại, đợi thêm 5 giây rồi mới chạy lại
+      if (this.isRunning) {
+        this.timeoutId = setTimeout(() => this.loop(), 5000);
+      }
+    }
+  }
+
+  async run() {
+    const activeEventIds = await redis.smembers('system:active_events');
+    
+    for (const eventId of activeEventIds) {
       const luckyUsers = await queueService.processQueue(eventId, BATCH_SIZE, SESSION_TTL_SECONDS);
       
       if (luckyUsers && Array.isArray(luckyUsers) && luckyUsers.length > 0) {

@@ -1,4 +1,4 @@
-const customerRepository = require('./CustomerRepository');
+const customerRepository = require('./customerRepository');
 const AppError = require('../errorHandling/AppError');
 
 class CustomerService {
