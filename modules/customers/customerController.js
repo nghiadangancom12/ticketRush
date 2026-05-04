@@ -1,6 +1,6 @@
 const catchAsync = require('../errorHandling/catchAsync');
 const ResponseFactory = require('../../utils/ResponseFactory');
-const customerService = require('./CustomerService');
+const customerService = require('./customerService');
 
 exports.getProfile = catchAsync(async (req, res) => {
   const [profile, orders, lockedSeats] = await Promise.all([

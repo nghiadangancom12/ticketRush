@@ -5,6 +5,10 @@ import { io } from 'socket.io-client';
 
 const API = 'http://localhost:3000/api';
 
+// Colors assigned by zone index
+const ZONE_PALETTE = ['#dc2626', '#6366f1', '#6b7280', '#f59e0b', '#10b981', '#3b82f6'];
+const ZONE_BADGE_CLASSES = ['badge-red', 'badge-purple', 'badge-gray', 'badge-yellow', 'badge-green', 'badge-cyan'];
+
 export default function EventDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -16,21 +20,16 @@ export default function EventDetailPage() {
   const [holdLoading, setHoldLoading] = useState(false);
 
   const token = localStorage.getItem('token');
-
-  // Flag đánh dấu user đang đi checkout — KHÔNG trả ghế khi unmount trong trường hợp này
   const isNavigatingToCheckout = useRef(false);
 
   const fetchEvent = async () => {
     try {
       const res = await axios.get(`${API}/events/${id}`, {
-        headers: token ? { Authorization: `Bearer ${token}` } : {}
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
       setEventData(res.data.data);
     } catch (err) {
-      if (err.response?.status === 403) {
-        // Queue is active and user is not allowed yet → redirect back to queue
-        setNotAllowed(true);
-      }
+      if (err.response?.status === 403) setNotAllowed(true);
     } finally {
       setLoading(false);
     }
@@ -44,74 +43,43 @@ export default function EventDetailPage() {
     socket.on('connect', () => socket.emit('joinEventRoom', id));
     socket.on('seatStatusChanged', fetchEvent);
 
-    // ─── Heartbeat: ping mỗi 15s để giữ session active ─────────────────
-    // Nếu user tắt tab / bấm logo / mất mạng → không ping → Redis tự xóa sau 20s
-    // Backend trả 410 Gone → frontend chuyển về trang hàng chờ
     const heartbeatInterval = setInterval(async () => {
       try {
-        await axios.post(
-          `http://localhost:3000/api/queue/${id}/heartbeat`,
-          {},
-          { headers: { Authorization: `Bearer ${token}` } }
-        );
+        await axios.post(`${API}/queue/${id}/heartbeat`, {}, { headers: { Authorization: `Bearer ${token}` } });
       } catch (err) {
         if (err.response?.status === 410) {
-          // Session hết hạn — người dùng bị đuổi ra khỏi phòng
           clearInterval(heartbeatInterval);
           navigate(`/event/${id}/queue`);
         }
-        // Các lỗi khác (mất mạng tạm thời) → bỏ qua, tiếp tục thử
       }
     }, 15000);
 
-    // Cleanup: khi user rời trang mà chưa thanh toán, trả ghế + giải phóng queue slot
-    // Ngoại lệ: nếu đang đi vào trang Checkout thì KHÔNG trả ghế
     return () => {
       socket.disconnect();
       clearInterval(heartbeatInterval);
       if (!isNavigatingToCheckout.current) {
         const pendingEventId = localStorage.getItem('checkoutEventId');
         if (pendingEventId === id && token) {
-          fetch(`http://localhost:3000/api/Booking/return`, {
+          fetch(`${API}/Booking/return`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
             body: JSON.stringify({ eventId: id }),
-            keepalive: true
+            keepalive: true,
           }).catch(() => {});
         }
       }
     };
   }, [id]);
 
-
-  // ─── Redirect if not allowed ───────────────────────────────────────────────
-  if (notAllowed) {
-    return (
-      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '60vh' }}>
-        <div className="glass-panel text-center" style={{ maxWidth: 420, padding: '3rem 2rem' }}>
-          <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>🚫</div>
-          <h2 className="mb-2">Chưa đến lượt</h2>
-          <p className="text-secondary mb-4">Bạn cần tham gia hàng chờ trước khi vào phòng mua vé.</p>
-          <button className="btn btn-primary" onClick={() => navigate(`/event/${id}/queue`)}>
-            🔔 Tham Gia Hàng Chờ
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  if (loading) return <div className="text-center mt-8">Đang tải sơ đồ ghế...</div>;
-  if (!eventData) return <div className="text-center mt-8">Không tìm thấy sự kiện.</div>;
-
-  // ─── Seat interaction ──────────────────────────────────────────────────────
-  const toggleSeat = (seat) => {
+  const toggleSeat = (seat, zone) => {
     if (seat.status !== 'AVAILABLE') return;
+    const enriched = { ...seat, zoneName: zone.name, price: zone.price };
     if (selectedSeats.find(s => s.id === seat.id)) {
       setSelectedSeats(prev => prev.filter(s => s.id !== seat.id));
       setErrorMsg('');
     } else {
       if (selectedSeats.length >= 4) { setErrorMsg('Bạn chỉ được chọn tối đa 4 ghế!'); return; }
-      setSelectedSeats(prev => [...prev, seat]);
+      setSelectedSeats(prev => [...prev, enriched]);
       setErrorMsg('');
     }
   };
@@ -124,7 +92,7 @@ export default function EventDetailPage() {
         { headers: { Authorization: `Bearer ${token}` } }
       );
       localStorage.setItem('checkoutEventId', id);
-      isNavigatingToCheckout.current = true; // Đánh dấu: đang đi checkout, KHAI không trả ghế
+      isNavigatingToCheckout.current = true;
       navigate('/checkout');
     } catch (err) {
       setErrorMsg(err.response?.data?.message || 'Có lỗi xảy ra khi giữ ghế.');
@@ -135,114 +103,227 @@ export default function EventDetailPage() {
     }
   };
 
-  // ─── Build seat grid ───────────────────────────────────────────────────────
-  const seatsByRow = {};
-  eventData.zones?.forEach(zone => {
-    zone.seats?.forEach(seat => {
-      if (!seatsByRow[seat.row_label]) seatsByRow[seat.row_label] = [];
-      seatsByRow[seat.row_label].push({ ...seat, zoneName: zone.name, price: zone.price });
-    });
-  });
-  const allSeats = Object.values(seatsByRow).flat();
-  const maxColNum = allSeats.length > 0 ? Math.max(...allSeats.map(s => s.seat_number)) : 0;
+  /* ── Not allowed ── */
+  if (notAllowed) return (
+    <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: 'calc(100vh - 60px)', padding: '2rem' }}>
+      <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 16, padding: '3rem 2rem', maxWidth: 400, textAlign: 'center' }}>
+        <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>🚫</div>
+        <h2 style={{ marginBottom: '0.5rem' }}>Chưa đến lượt</h2>
+        <p style={{ color: 'var(--text-secondary)', marginBottom: '1.5rem', fontSize: '0.9rem' }}>
+          Bạn cần tham gia hàng chờ trước khi vào phòng chọn vé.
+        </p>
+        <button className="btn btn-primary" onClick={() => navigate(`/event/${id}/queue`)}>
+          Tham Gia Hàng Chờ
+        </button>
+      </div>
+    </div>
+  );
+
+  if (loading) return (
+    <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: 'calc(100vh - 60px)' }}>
+      <div className="spinner" />
+    </div>
+  );
+
+  if (!eventData) return (
+    <div style={{ textAlign: 'center', padding: '4rem', color: 'var(--text-secondary)' }}>
+      Không tìm thấy sự kiện.
+    </div>
+  );
+
+  const totalSelected = selectedSeats.reduce((s, seat) => s + Number(seat.price), 0);
 
   return (
-    <div>
-      <h1 className="text-gradient mb-1" style={{ fontSize: '2.2rem' }}>{eventData.title}</h1>
-      <p className="text-secondary mb-6">
-        📍 {eventData.location}&nbsp;·&nbsp;📅 {new Date(eventData.start_time).toLocaleString('vi-VN')}
-      </p>
+    <div style={{ maxWidth: 1200, margin: '0 auto', padding: '1.5rem 1.5rem 6rem' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '320px 1fr', gap: '1.5rem', alignItems: 'start' }}>
 
-      <div style={{ display: 'flex', gap: '2rem', flexWrap: 'wrap' }}>
-        {/* ── Seat Map ── */}
-        <div style={{ flex: 2, minWidth: '60%' }}>
-          <div className="glass-panel text-center">
-            <div style={{ background: 'rgba(255,255,255,0.08)', padding: '0.75rem', borderRadius: '6px', marginBottom: '1.5rem', letterSpacing: '0.1em', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
-              🎭 SÂN KHẤU / MÀN HÌNH
+        {/* ── Left: Event Info ── */}
+        <div style={{ position: 'sticky', top: '1.5rem' }}>
+          {/* Cover */}
+          <div style={{
+            borderRadius: 16, overflow: 'hidden', marginBottom: '1rem',
+            background: 'linear-gradient(135deg, #1e1b4b, #312e81)',
+            aspectRatio: '4/3',
+          }}>
+            {eventData.image_url ? (
+              <img src={eventData.image_url} alt={eventData.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+            ) : (
+              <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '4rem' }}>🎵</div>
+            )}
+          </div>
+
+          {/* Info card */}
+          <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 16, padding: '1.25rem' }}>
+            <span className="badge badge-purple" style={{ marginBottom: '0.625rem' }}>ÂM NHẠC</span>
+            <h2 style={{ fontSize: '1.25rem', fontWeight: 800, marginBottom: '0.875rem', lineHeight: 1.3 }}>{eventData.title}</h2>
+            {eventData.description && (
+              <p style={{ fontSize: '0.84rem', color: 'var(--text-secondary)', marginBottom: '1rem', lineHeight: 1.6 }}>
+                {eventData.description}
+              </p>
+            )}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', fontSize: '0.84rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-secondary)' }}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="4" width="18" height="18" rx="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" /></svg>
+                <div>
+                  <div style={{ color: 'var(--text)', fontWeight: 600 }}>
+                    {new Date(eventData.start_time).toLocaleDateString('vi-VN', { day: 'numeric', month: 'long', year: 'numeric' })}
+                  </div>
+                  <div style={{ fontSize: '0.78rem' }}>
+                    {new Date(eventData.start_time).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}
+                  </div>
+                </div>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem', color: 'var(--text-secondary)' }}>
+                <svg style={{ marginTop: 2, flexShrink: 0 }} width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" /><circle cx="12" cy="10" r="3" /></svg>
+                <div>
+                  <div style={{ color: 'var(--text)', fontWeight: 600 }}>{eventData.location}</div>
+                </div>
+              </div>
             </div>
-            <div className="seat-map-container">
-              {Object.keys(seatsByRow).sort().map(rowLabel => {
-                const seats = [...seatsByRow[rowLabel]].sort((a, b) => a.seat_number - b.seat_number);
+          </div>
+        </div>
+
+        {/* ── Right: Seat Map ── */}
+        <div>
+          <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 16, padding: '1.5rem' }}>
+            <h3 style={{ fontSize: '1.1rem', fontWeight: 700, marginBottom: '1.25rem' }}>Sơ Đồ Chỗ Ngồi</h3>
+
+            {/* Legend */}
+            <div style={{ display: 'flex', gap: '1.25rem', marginBottom: '1rem', fontSize: '0.8rem', color: 'var(--text-secondary)', flexWrap: 'wrap' }}>
+              {[
+                { cls: '', label: 'Trống', style: { width: 14, height: 14, borderRadius: '50%', border: '2px solid #94a3b8', background: 'transparent', display: 'inline-block' } },
+                { cls: 's-selected', label: 'Đang chọn', style: { width: 14, height: 14, borderRadius: '50%', background: 'var(--cyan)', border: '2px solid var(--cyan)', display: 'inline-block' } },
+                { cls: '', label: 'Đã bán', style: { width: 14, height: 14, borderRadius: '50%', background: 'rgba(55,65,81,0.8)', border: '2px solid rgba(55,65,81,0.8)', opacity: 0.4, display: 'inline-block' } },
+              ].map(({ label, style }) => (
+                <div key={label} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                  <span style={style} />
+                  {label}
+                </div>
+              ))}
+            </div>
+
+            {/* Zone price legend */}
+            <div style={{ display: 'flex', gap: '0.625rem', marginBottom: '1.5rem', flexWrap: 'wrap' }}>
+              {eventData.zones?.map((zone, zIdx) => (
+                <button
+                  key={zone.id}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: '0.5rem',
+                    padding: '0.35rem 0.875rem', borderRadius: 100,
+                    background: 'rgba(255,255,255,0.05)', border: `1px solid ${ZONE_PALETTE[zIdx % ZONE_PALETTE.length]}40`,
+                    color: 'var(--text)', fontSize: '0.8rem', fontWeight: 600, cursor: 'default',
+                  }}
+                >
+                  <span style={{ width: 8, height: 8, borderRadius: '50%', background: ZONE_PALETTE[zIdx % ZONE_PALETTE.length], display: 'inline-block', flexShrink: 0 }} />
+                  {zone.name}: {Number(zone.price).toLocaleString('vi-VN')}đ
+                </button>
+              ))}
+            </div>
+
+            {/* Seat map canvas */}
+            <div style={{ background: 'rgba(0,0,0,0.25)', borderRadius: 12, padding: '1.5rem', overflow: 'auto' }}>
+              {/* Stage */}
+              <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
+                <div style={{ display: 'inline-block', background: 'rgba(255,255,255,0.08)', borderRadius: 8, padding: '0.5rem 2rem', fontSize: '0.75rem', letterSpacing: '0.12em', color: 'var(--text-secondary)', fontWeight: 600 }}>
+                  SÂN KHẤU
+                </div>
+              </div>
+
+              {/* Zones */}
+              {eventData.zones?.map((zone, zIdx) => {
+                const color = ZONE_PALETTE[zIdx % ZONE_PALETTE.length];
+                const rowMap = {};
+                zone.seats?.forEach(seat => {
+                  if (!rowMap[seat.row_label]) rowMap[seat.row_label] = [];
+                  rowMap[seat.row_label].push(seat);
+                });
+                const maxCol = zone.seats?.length > 0 ? Math.max(...zone.seats.map(s => s.seat_number)) : 0;
+
                 return (
-                  <div key={rowLabel} style={{ display: 'flex', gap: '4px', marginBottom: '4px', alignItems: 'center' }}>
-                    <div style={{ width: '2rem', fontWeight: 700, fontSize: '0.8rem', color: 'var(--text-secondary)', textAlign: 'right' }}>{rowLabel}</div>
-                    <div style={{ display: 'grid', gridTemplateColumns: `repeat(${maxColNum}, 32px)`, gap: '3px' }}>
-                      {Array.from({ length: maxColNum }).map((_, cIdx) => {
-                        const seat = seats.find(s => s.seat_number === cIdx + 1);
-                        if (!seat) return <div key={cIdx} style={{ width: 32, height: 32 }} />;
-                        const isSelected = selectedSeats.some(s => s.id === seat.id);
-                        let cls = 'seat seat-avai';
-                        if (isSelected) cls = 'seat seat-selected';
-                        else if (seat.status === 'LOCKED') cls = 'seat seat-locked';
-                        else if (seat.status === 'SOLD') cls = 'seat seat-sold';
-                        return (
-                          <div key={seat.id} className={cls}
-                            style={{ width: 32, height: 32, margin: 0, fontSize: '10px' }}
-                            onClick={() => toggleSeat(seat)}
-                            title={`${seat.zoneName} — ${rowLabel}${seat.seat_number} — ${Number(seat.price).toLocaleString('vi-VN')}đ`}>
-                            {seat.seat_number}
-                          </div>
-                        );
-                      })}
-                    </div>
+                  <div key={zone.id} style={{ marginBottom: '1.75rem' }}>
+                    {Object.keys(rowMap).sort().map(rowLabel => {
+                      const seats = [...rowMap[rowLabel]].sort((a, b) => a.seat_number - b.seat_number);
+                      return (
+                        <div key={rowLabel} style={{ display: 'flex', justifyContent: 'center', gap: 4, marginBottom: 4, alignItems: 'center' }}>
+                          {Array.from({ length: maxCol }).map((_, cIdx) => {
+                            const seat = seats.find(s => s.seat_number === cIdx + 1);
+                            if (!seat) return <div key={cIdx} style={{ width: 20, height: 20, flexShrink: 0 }} />;
+                            const isSelected = selectedSeats.some(s => s.id === seat.id);
+                            let extraCls = '';
+                            let bgStyle = {};
+                            if (isSelected) {
+                              extraCls = 's-selected';
+                            } else if (seat.status === 'LOCKED') {
+                              extraCls = 's-locked';
+                              bgStyle = { background: 'rgba(107,114,128,0.5)', borderColor: 'rgba(107,114,128,0.5)' };
+                            } else if (seat.status === 'SOLD') {
+                              extraCls = 's-sold';
+                              bgStyle = { background: 'rgba(55,65,81,0.7)', borderColor: 'rgba(55,65,81,0.7)' };
+                            } else {
+                              bgStyle = { borderColor: color, background: 'transparent' };
+                            }
+                            return (
+                              <div
+                                key={seat.id}
+                                className={`seat-circle ${extraCls}`}
+                                style={bgStyle}
+                                onClick={() => toggleSeat(seat, zone)}
+                                title={`${zone.name} — ${rowLabel}${seat.seat_number} — ${Number(zone.price).toLocaleString('vi-VN')}đ`}
+                              />
+                            );
+                          })}
+                        </div>
+                      );
+                    })}
                   </div>
                 );
               })}
             </div>
 
-            {/* Legend */}
-            <div className="flex justify-center gap-4 mt-4" style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', flexWrap: 'wrap' }}>
-              {[['seat-avai', 'Còn trống'], ['seat-selected', 'Đã chọn'], ['seat-locked', 'Đang giữ'], ['seat-sold', 'Đã bán']].map(([cls, label]) => (
-                <div key={cls} className="flex items-center gap-2">
-                  <div className={`seat ${cls}`} style={{ width: 18, height: 18 }} />
-                  {label}
-                </div>
-              ))}
-            </div>
-            {/* Zone prices */}
-            <div className="flex justify-center gap-3 mt-2" style={{ fontSize: '0.8rem', flexWrap: 'wrap' }}>
-              {eventData.zones?.map(z => (
-                <span key={z.id} style={{ background: 'rgba(255,255,255,0.06)', padding: '0.2rem 0.6rem', borderRadius: '9999px' }}>
-                  {z.name} — {Number(z.price).toLocaleString('vi-VN')}đ
-                </span>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        {/* ── Right Panel ── */}
-        <div style={{ flex: 1, minWidth: '280px' }}>
-          <div className="glass-panel sticky" style={{ top: '5rem' }}>
-            <h2 className="mb-4">🛒 Ghế Đã Chọn ({selectedSeats.length}/4)</h2>
             {errorMsg && (
-              <div style={{ color: 'var(--danger)', background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: '6px', padding: '0.6rem 0.8rem', marginBottom: '1rem', fontSize: '0.9rem' }}>
-                {errorMsg}
-              </div>
-            )}
-            {selectedSeats.length === 0 ? (
-              <p className="text-secondary" style={{ fontSize: '0.9rem' }}>Nhấp vào ghế xanh để chọn.</p>
-            ) : (
-              <div>
-                <ul style={{ listStyle: 'none', marginBottom: '1rem', display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
-                  {selectedSeats.map(s => (
-                    <li key={s.id} className="flex justify-between" style={{ background: 'rgba(255,255,255,0.05)', padding: '0.5rem 0.75rem', borderRadius: '6px', fontSize: '0.9rem' }}>
-                      <span>{s.zoneName} — {s.row_label}{s.seat_number}</span>
-                      <span style={{ color: 'var(--success)' }}>{Number(s.price).toLocaleString('vi-VN')}đ</span>
-                    </li>
-                  ))}
-                </ul>
-                <div className="flex justify-between font-bold mb-4" style={{ fontSize: '1.1rem', borderTop: '1px solid var(--border-color)', paddingTop: '0.75rem' }}>
-                  <span>Tổng:</span>
-                  <span className="text-primary">{selectedSeats.reduce((sum, s) => sum + Number(s.price), 0).toLocaleString('vi-VN')}đ</span>
-                </div>
-                <button className="btn btn-primary" style={{ width: '100%' }} onClick={handleHoldSeats} disabled={holdLoading}>
-                  {holdLoading ? '⏳ Đang giữ chỗ...' : '🎟️ Giữ Chỗ & Thanh Toán'}
-                </button>
-              </div>
+              <div className="alert alert-error" style={{ marginTop: '1rem' }}>{errorMsg}</div>
             )}
           </div>
         </div>
       </div>
+
+      {/* ── Bottom checkout bar ── */}
+      {selectedSeats.length > 0 && (
+        <div className="checkout-bar">
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flex: 1 }}>
+            <div style={{ background: 'rgba(124,58,237,0.15)', border: '1px solid rgba(124,58,237,0.3)', borderRadius: 8, padding: '0.5rem', display: 'flex', alignItems: 'center' }}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--purple-light)" strokeWidth="2">
+                <path d="M2 9a3 3 0 0 1 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 0 1 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2z" />
+              </svg>
+            </div>
+            <div>
+              <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>
+                Đã chọn: {selectedSeats.map(s => `${s.zoneName}-${s.row_label}${s.seat_number}`).join(', ')}
+              </div>
+              <div style={{ fontWeight: 700, fontSize: '1rem' }}>
+                {totalSelected.toLocaleString('vi-VN')}đ
+                <span style={{ fontWeight: 400, fontSize: '0.8rem', color: 'var(--text-secondary)', marginLeft: '0.4rem' }}>
+                  ({selectedSeats.length} vé)
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <button
+            className="btn btn-primary"
+            style={{ padding: '0.75rem 1.75rem', fontSize: '0.9rem', gap: '0.5rem' }}
+            onClick={handleHoldSeats}
+            disabled={holdLoading}
+          >
+            {holdLoading ? 'Đang giữ chỗ...' : 'Tiếp tục thanh toán'}
+            {!holdLoading && (
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <line x1="5" y1="12" x2="19" y2="12" /><polyline points="12 5 19 12 12 19" />
+              </svg>
+            )}
+          </button>
+        </div>
+      )}
     </div>
   );
 }

@@ -16,31 +16,20 @@ export default function CheckoutPage() {
   const token = localStorage.getItem('token');
   const heartbeatRef = useRef(null);
 
-  // ─── Heartbeat: ping mỗi 12s để giữ queue session không hết hạn ────────────
-  // Session TTL = 20s, nên ping 12s là an toàn. Dừng heartbeat khi unmount.
   useEffect(() => {
     if (!eventId || !token) return;
-
     const ping = async () => {
       try {
-        await axios.post(
-          `${API}/queue/${eventId}/heartbeat`,
-          {},
-          { headers: { Authorization: `Bearer ${token}` } }
-        );
+        await axios.post(`${API}/queue/${eventId}/heartbeat`, {}, { headers: { Authorization: `Bearer ${token}` } });
       } catch (err) {
         if (err.response?.status === 410) {
-          // Session hết hạn — điều hướng về hàng chờ
           clearInterval(heartbeatRef.current);
-          setErrorMsg('⏰ Phiên giao dịch đã hết hạn. Vui lòng quay lại hàng chờ.');
+          setErrorMsg('Phiên giao dịch đã hết hạn. Vui lòng quay lại hàng chờ.');
         }
       }
     };
-
-    // Ping ngay khi vào trang, sau đó mỗi 12 giây
     ping();
     heartbeatRef.current = setInterval(ping, 12000);
-
     return () => clearInterval(heartbeatRef.current);
   }, [eventId, token]);
 
@@ -49,11 +38,7 @@ export default function CheckoutPage() {
     try {
       if (!token) { navigate('/auth'); return; }
       if (!eventId) { setErrorMsg('Không tìm thấy thông tin sự kiện. Vui lòng quay lại chọn ghế.'); return; }
-
-      const res = await axios.post(`${API}/Booking/checkout`,
-        { eventId },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      const res = await axios.post(`${API}/Booking/checkout`, { eventId }, { headers: { Authorization: `Bearer ${token}` } });
       setOrderInfo(res.data.data?.order);
       setSuccess(true);
       localStorage.removeItem('checkoutEventId');
@@ -64,90 +49,104 @@ export default function CheckoutPage() {
     }
   };
 
-  /**
-   * Người dùng bấm "Quay Lại" hoặc "Huỷ":
-   * 1. Gọi POST /Booking/return → nhả ghế LOCKED về AVAILABLE
-   *    + giải phóng slot Queue cho người tiếp theo
-   * 2. Điều hướng về trang sự kiện để chọn ghế lại
-   */
   const handleCancel = async () => {
     if (!eventId || !token) { navigate('/'); return; }
     setCancelling(true);
     try {
-      await axios.post(`${API}/Booking/return`,
-        { eventId },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      await axios.post(`${API}/Booking/return`, { eventId }, { headers: { Authorization: `Bearer ${token}` } });
     } catch (err) {
-      // Không block navigation nếu return API lỗi
       console.warn('Lỗi trả ghế:', err.response?.data?.message);
     } finally {
       setCancelling(false);
       localStorage.removeItem('checkoutEventId');
-      // Quay lại trang queue để chọn lại
       navigate(`/event/${eventId}/queue`);
     }
   };
 
-  if (success) {
-    return (
-      <div className="flex justify-center mt-8">
-        <div className="glass-panel text-center" style={{ maxWidth: 500, padding: '3rem' }}>
-          <div style={{ fontSize: '4rem', marginBottom: '1rem' }}>✅</div>
-          <h2 className="text-gradient mb-2">Thanh Toán Thành Công!</h2>
-          <p className="text-secondary mb-2">Vé của bạn đã được xác nhận. Chúng tôi sẽ gửi email kèm mã QR cho bạn ngay.</p>
-          <p style={{ fontFamily: 'monospace', color: 'var(--primary)', marginBottom: '1.5rem', fontSize: '0.9rem' }}>
-            Mã đơn: #{orderInfo?.id?.slice(0, 8)?.toUpperCase()}
-          </p>
-          <div className="flex gap-4 justify-center">
-            <button className="btn btn-primary" onClick={() => navigate('/me')}>Xem Lịch Sử Đặt Vé</button>
-            <button className="btn btn-outline" onClick={() => navigate('/')}>Trang Chủ</button>
+  if (success) return (
+    <div style={{ minHeight: 'calc(100vh - 60px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2rem' }}>
+      <div style={{ background: 'var(--bg-card)', border: '1px solid rgba(16,185,129,0.3)', borderRadius: 20, padding: '3rem 2.5rem', maxWidth: 480, width: '100%', textAlign: 'center' }} className="animate-fadeIn">
+        {/* Success icon */}
+        <div style={{ width: 80, height: 80, background: 'linear-gradient(135deg, #10b981, #059669)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.5rem', fontSize: '2.5rem' }}>
+          ✓
+        </div>
+        <h2 style={{ fontSize: '1.5rem', marginBottom: '0.5rem' }} className="text-gradient">Thanh Toán Thành Công!</h2>
+        <p style={{ color: 'var(--text-secondary)', marginBottom: '1rem', fontSize: '0.9rem' }}>
+          Vé của bạn đã được xác nhận. Chúng tôi sẽ gửi email kèm mã QR ngay.
+        </p>
+
+        {/* Order ID */}
+        <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid var(--border)', borderRadius: 10, padding: '0.875rem', marginBottom: '1.5rem', display: 'inline-block' }}>
+          <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', letterSpacing: '0.08em', marginBottom: '0.2rem' }}>MÃ ĐƠN HÀNG</div>
+          <div style={{ fontFamily: 'monospace', fontSize: '1.1rem', fontWeight: 700, color: 'var(--purple-light)', letterSpacing: '0.05em' }}>
+            #{orderInfo?.id?.slice(0, 8)?.toUpperCase() || '--------'}
           </div>
+        </div>
+
+        <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'center' }}>
+          <button className="btn btn-primary" onClick={() => navigate('/me')}>Xem lịch sử đặt vé</button>
+          <button className="btn btn-outline" onClick={() => navigate('/')}>Trang chủ</button>
         </div>
       </div>
-    );
-  }
+    </div>
+  );
 
   return (
-    <div className="flex justify-center mt-8">
-      <div className="glass-panel" style={{ maxWidth: 480, width: '100%', padding: '2rem' }}>
-        <h2 className="text-center mb-2">🎟️ Xác Nhận Thanh Toán</h2>
-        <p className="text-secondary text-center mb-4" style={{ fontSize: '0.9rem' }}>
-          Hệ thống mô phỏng — không cần nhập thông tin thẻ
-        </p>
-
-        {errorMsg && (
-          <div style={{ color: 'var(--danger)', background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: '8px', padding: '0.75rem', marginBottom: '1rem' }}>
-            ❌ {errorMsg}
+    <div style={{ minHeight: 'calc(100vh - 60px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2rem' }}>
+      <div style={{ width: '100%', maxWidth: 480 }} className="animate-fadeIn">
+        {/* Header */}
+        <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
+          <div style={{ width: 56, height: 56, background: 'linear-gradient(135deg, var(--purple), var(--cyan))', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1rem', fontSize: '1.5rem' }}>
+            🎟
           </div>
-        )}
-
-        <div style={{ background: 'rgba(255,255,255,0.04)', borderRadius: '8px', padding: '1rem', marginBottom: '1.5rem', borderLeft: '3px solid var(--primary)' }}>
-          <p className="text-secondary" style={{ fontSize: '0.85rem', margin: 0 }}>
-            ⏱ Ghế sẽ tự động được nhả sau <strong style={{ color: 'var(--warning)' }}>60 giây</strong> nếu bạn chưa hoàn tất.
-          </p>
+          <h2 style={{ fontSize: '1.375rem', fontWeight: 800, marginBottom: '0.25rem' }}>Xác Nhận Thanh Toán</h2>
+          <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Hệ thống mô phỏng — không cần nhập thông tin thẻ</p>
         </div>
 
-        <button
-          className="btn btn-primary"
-          style={{ width: '100%', padding: '0.875rem', fontSize: '1rem' }}
-          onClick={handleCheckout}
-          disabled={loading || cancelling}>
-          {loading ? '⏳ Đang xử lý...' : '💳 XÁC NHẬN THANH TOÁN'}
-        </button>
+        <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 16, overflow: 'hidden' }}>
+          {/* Info box */}
+          <div style={{ background: 'rgba(245,158,11,0.08)', borderBottom: '1px solid rgba(245,158,11,0.15)', padding: '1rem 1.25rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--warning)" strokeWidth="2"><circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" /></svg>
+            <p style={{ fontSize: '0.84rem', color: 'var(--text-secondary)' }}>
+              Ghế sẽ tự động được nhả sau <strong style={{ color: 'var(--warning)' }}>60 giây</strong> nếu bạn chưa hoàn tất.
+            </p>
+          </div>
 
-        {/* Huỷ → trả ghế + giải phóng queue slot */}
-        <button
-          className="btn btn-outline mt-4"
-          style={{ width: '100%' }}
-          onClick={handleCancel}
-          disabled={loading || cancelling}>
-          {cancelling ? '↩️ Đang trả ghế...' : '← Huỷ & Quay Lại Chọn Ghế'}
-        </button>
+          <div style={{ padding: '1.5rem' }}>
+            {errorMsg && (
+              <div className="alert alert-error" style={{ marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10" /><line x1="15" y1="9" x2="9" y2="15" /><line x1="9" y1="9" x2="15" y2="15" /></svg>
+                {errorMsg}
+              </div>
+            )}
 
-        <p className="text-secondary text-center mt-4" style={{ fontSize: '0.75rem' }}>
-          Huỷ sẽ nhả ghế ngay lập tức và cho người tiếp theo vào hàng chờ.
-        </p>
+            <button
+              className="btn btn-primary"
+              style={{ width: '100%', padding: '0.95rem', fontSize: '0.95rem', justifyContent: 'center', marginBottom: '0.75rem' }}
+              onClick={handleCheckout}
+              disabled={loading || cancelling}
+            >
+              {loading
+                ? <><span className="spinner" style={{ width: 16, height: 16, borderWidth: 2 }} />Đang xử lý...</>
+                : 'Xác Nhận Thanh Toán'}
+            </button>
+
+            <button
+              className="btn btn-outline"
+              style={{ width: '100%', justifyContent: 'center' }}
+              onClick={handleCancel}
+              disabled={loading || cancelling}
+            >
+              {cancelling
+                ? <><span className="spinner" style={{ width: 14, height: 14, borderWidth: 2 }} />Đang trả ghế...</>
+                : '← Huỷ & Quay Lại Chọn Ghế'}
+            </button>
+
+            <p style={{ textAlign: 'center', marginTop: '1rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+              Huỷ sẽ nhả ghế ngay lập tức và cho người tiếp theo vào hàng chờ.
+            </p>
+          </div>
+        </div>
       </div>
     </div>
   );

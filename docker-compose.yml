@@ -22,7 +22,7 @@ services:
     container_name: ticketrush-redis
     restart: always
     ports:
-      - "6379:6379"
+      - "6380:6379"
 
   # 3. API Server chính
   api:
@@ -34,6 +34,9 @@ services:
     # 👇 Tự động nạp TOÀN BỘ file .env vào container này
     env_file: 
       - .env
+    environment:
+      DATABASE_URL: postgresql://postgres:12072005@db:5432/ticketRush?schema=public
+      REDIS_URL: redis://redis:6379
     depends_on:
       - db
       - redis
@@ -46,6 +49,9 @@ services:
     command: ["node", "modules/jobs/workers/emailWorker.js"]
     env_file:
       - .env
+    environment:
+      DATABASE_URL: postgresql://postgres:12072005@db:5432/ticketRush?schema=public
+      REDIS_URL: redis://redis:6379
     depends_on:
       - redis
       - db
@@ -58,6 +64,9 @@ services:
     command: ["node", "modules/jobs/workers/seatReleaseWorker.js"]
     env_file:
       - .env
+    environment:
+      DATABASE_URL: postgresql://postgres:12072005@db:5432/ticketRush?schema=public
+      REDIS_URL: redis://redis:6379
     depends_on:
       - redis
       - db

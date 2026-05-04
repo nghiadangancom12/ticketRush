@@ -1,29 +1,15 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import './ProfilePage.css';
 
 const API = 'http://localhost:3000/api';
 const GENDER_LABELS = { MALE: 'Nam', FEMALE: 'Nữ', OTHER: 'Khác' };
 
-function AvatarDisplay({ name, avatarUrl, size = 80 }) {
-  const initials = name ? name.split(' ').map(w => w[0]).slice(-2).join('').toUpperCase() : '?';
-  if (avatarUrl) {
-    return (
-      <img src={avatarUrl} alt="avatar"
-        style={{ width: size, height: size, borderRadius: '50%', objectFit: 'cover', border: '3px solid var(--primary)' }}
-        onError={e => { e.target.style.display = 'none'; }} />
-    );
-  }
-  return (
-    <div style={{
-      width: size, height: size, borderRadius: '50%',
-      background: 'linear-gradient(135deg, var(--primary), var(--secondary))',
-      display: 'flex', alignItems: 'center', justifyContent: 'center',
-      fontSize: size * 0.35, fontWeight: 700, color: '#fff',
-      border: '3px solid var(--primary)', flexShrink: 0
-    }}>{initials}</div>
-  );
+function Avatar({ name, url, size = 72 }) {
+  const initials = name ? name.split(' ').map(w => w[0]).filter(Boolean).slice(-2).join('').toUpperCase() : '?';
+  return url
+    ? <img src={url} alt="avatar" style={{ width: size, height: size, borderRadius: '50%', objectFit: 'cover', border: '2px solid rgba(124,58,237,0.4)' }} onError={e => e.target.style.display = 'none'} />
+    : <div style={{ width: size, height: size, borderRadius: '50%', background: 'linear-gradient(135deg, #7c3aed, #06b6d4)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: size * 0.33, fontWeight: 700, color: '#fff', flexShrink: 0, border: '2px solid rgba(124,58,237,0.4)' }}>{initials}</div>;
 }
 
 export default function ProfilePage() {
@@ -42,20 +28,15 @@ export default function ProfilePage() {
 
   const fetchAll = async () => {
     try {
-      // 1. Profile from /api/users/me
-      const profileRes = await axios.get(`${API}/users/me`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const [profileRes, histRes] = await Promise.all([
+        axios.get(`${API}/users/me`, { headers: { Authorization: `Bearer ${token}` } }),
+        axios.get(`${API}/customers/purchaseHistory`, { headers: { Authorization: `Bearer ${token}` } }),
+      ]);
       const p = profileRes.data.data;
       setProfile(p);
       setForm({ full_name: p.full_name || '', date_of_birth: p.date_of_birth ? p.date_of_birth.split('T')[0] : '', gender: p.gender || '' });
       setAvatarInput(p.avatar_url || '');
       if (p.avatar_url) localStorage.setItem('avatarUrl', p.avatar_url);
-
-      // 2. Purchase history from /api/customers/purchaseHistory
-      const histRes = await axios.get(`${API}/customers/purchaseHistory`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
       setOrders(histRes.data.data?.orders || []);
       setLockedSeats(histRes.data.data?.lockedSeats || []);
     } catch (err) {
@@ -65,164 +46,164 @@ export default function ProfilePage() {
     }
   };
 
-  useEffect(() => {
-    if (!token) { navigate('/auth'); return; }
-    fetchAll();
-  }, []);
+  useEffect(() => { if (!token) { navigate('/auth'); return; } fetchAll(); }, []);
 
   const handleSave = async () => {
     setSaving(true); setMsg({ type: '', text: '' });
     try {
-      const res = await axios.patch(`${API}/users/me`, { ...form, avatar_url: avatarInput }, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const res = await axios.patch(`${API}/users/me`, { ...form, avatar_url: avatarInput }, { headers: { Authorization: `Bearer ${token}` } });
       setProfile(res.data.data);
       localStorage.setItem('avatarUrl', avatarInput);
-      localStorage.setItem('userName', res.data.data.full_name);
+      localStorage.setItem('userName', form.full_name);
       setEditing(false);
-      setMsg({ type: 'success', text: '✅ Cập nhật thành công!' });
+      setMsg({ type: 'success', text: 'Cập nhật thành công!' });
     } catch (err) {
-      setMsg({ type: 'error', text: err.response?.data?.message || 'Có lỗi xảy ra.' });
+      setMsg({ type: 'error', text: err.response?.data?.message || 'Có lỗi khi lưu.' });
     } finally {
       setSaving(false);
     }
   };
 
-  if (loading) return <div className="text-center mt-8">Đang tải hồ sơ...</div>;
-  if (!profile) return null;
+  if (loading) return (
+    <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: 'calc(100vh - 60px)' }}>
+      <div className="spinner" />
+    </div>
+  );
+
+  const totalSpent = orders.filter(o => o.status === 'PAID').reduce((s, o) => s + Number(o.total_amount), 0);
+
+  const orderStatusBadge = (status) => {
+    if (status === 'PAID') return <span className="badge badge-green">Đã thanh toán</span>;
+    if (status === 'CANCELLED') return <span className="badge badge-red">Đã huỷ</span>;
+    return <span className="badge badge-yellow">Chờ thanh toán</span>;
+  };
 
   return (
-    <div className="profile-page">
-      {/* Header */}
-      <div className="profile-header glass-panel">
-        <div className="profile-avatar-wrap">
-          <AvatarDisplay name={profile.full_name} avatarUrl={avatarInput || profile.avatar_url} size={100} />
-          {editing && (
-            <div className="avatar-edit-wrap">
-              <input type="text" className="form-input" placeholder="URL ảnh đại diện..." value={avatarInput}
-                onChange={e => setAvatarInput(e.target.value)} style={{ fontSize: '0.8rem', padding: '0.4rem 0.75rem' }} />
-            </div>
-          )}
-        </div>
-        <div className="profile-info">
-          {editing ? (
-            <input type="text" className="form-input" value={form.full_name}
-              onChange={e => setForm({ ...form, full_name: e.target.value })}
-              style={{ fontSize: '1.4rem', fontWeight: 700, marginBottom: '0.5rem' }} />
-          ) : (
-            <h2 style={{ fontSize: '1.6rem', marginBottom: '0.25rem' }}>{profile.full_name}</h2>
-          )}
-          <div className="profile-badges">
-            <span className={`badge ${profile.role === 'ADMIN' ? 'badge-admin' : 'badge-customer'}`}>
-              {profile.role === 'ADMIN' ? '👑 Admin' : '🎫 Customer'}
+    <div style={{ maxWidth: 900, margin: '0 auto', padding: '2rem 1.5rem 4rem' }} className="animate-fadeIn">
+
+      {/* ── Profile Header ── */}
+      <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 16, padding: '1.75rem', marginBottom: '1.5rem', display: 'flex', gap: '1.5rem', alignItems: 'flex-start', flexWrap: 'wrap' }}>
+        <Avatar name={profile?.full_name} url={profile?.avatar_url} size={80} />
+        <div style={{ flex: 1 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.25rem', flexWrap: 'wrap' }}>
+            <h2 style={{ fontSize: '1.25rem', fontWeight: 800 }}>{profile?.full_name}</h2>
+            <span className={`badge ${profile?.role === 'ADMIN' ? 'badge-yellow' : 'badge-purple'}`}>
+              {profile?.role === 'ADMIN' ? 'Quản trị viên' : 'Khách hàng'}
             </span>
-            <span className="badge badge-neutral">{profile.email}</span>
+          </div>
+          <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', marginBottom: '0.75rem' }}>{profile?.email}</p>
+          <div style={{ display: 'flex', gap: '1.25rem', flexWrap: 'wrap' }}>
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ fontWeight: 700, fontSize: '1.1rem' }}>{orders.length}</div>
+              <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Đơn hàng</div>
+            </div>
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ fontWeight: 700, fontSize: '1.1rem', color: 'var(--success)' }}>{totalSpent.toLocaleString('vi-VN')}đ</div>
+              <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Đã chi tiêu</div>
+            </div>
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ fontWeight: 700, fontSize: '1.1rem' }}>
+                {profile?.created_at ? new Date(profile.created_at).toLocaleDateString('vi-VN', { month: 'short', year: 'numeric' }) : '—'}
+              </div>
+              <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Tham gia</div>
+            </div>
           </div>
         </div>
-        <div className="profile-actions">
-          {editing ? (
-            <>
-              <button className="btn btn-primary" onClick={handleSave} disabled={saving}>{saving ? 'Đang lưu...' : '💾 Lưu'}</button>
-              <button className="btn btn-outline" onClick={() => { setEditing(false); setMsg({ type: '', text: '' }); }}>Huỷ</button>
-            </>
-          ) : (
-            <button className="btn btn-primary" onClick={() => setEditing(true)}>✏️ Chỉnh sửa</button>
-          )}
-        </div>
+        <button className="btn btn-outline" style={{ fontSize: '0.8rem', padding: '0.45rem 0.875rem' }} onClick={() => { setEditing(!editing); setMsg({ type: '', text: '' }); }}>
+          {editing ? 'Huỷ' : 'Chỉnh sửa'}
+        </button>
       </div>
 
-      {msg.text && <div className={`alert-msg ${msg.type}`}>{msg.text}</div>}
-
-      <div className="profile-grid">
-        {/* Personal Info */}
-        <div className="glass-panel">
-          <h3 className="section-title">📋 Thông Tin Cá Nhân</h3>
-          <div className="info-table">
-            <div className="info-row">
-              <span className="info-label">Ngày sinh</span>
-              {editing ? (
-                <input type="date" className="form-input" value={form.date_of_birth} onChange={e => setForm({ ...form, date_of_birth: e.target.value })} />
-              ) : (
-                <span>{profile.date_of_birth ? new Date(profile.date_of_birth).toLocaleDateString('vi-VN') : 'Chưa cập nhật'}</span>
-              )}
+      {/* ── Edit Form ── */}
+      {editing && (
+        <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 16, padding: '1.5rem', marginBottom: '1.5rem' }}>
+          <h3 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: '1.25rem' }}>Chỉnh sửa thông tin</h3>
+          {msg.text && <div className={`alert ${msg.type === 'success' ? 'alert-success' : 'alert-error'}`} style={{ marginBottom: '1rem' }}>{msg.text}</div>}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '1rem' }}>
+            <div className="form-group" style={{ margin: 0 }}>
+              <label className="form-label">Họ và tên</label>
+              <input className="form-input" value={form.full_name} onChange={e => setForm(f => ({ ...f, full_name: e.target.value }))} />
             </div>
-            <div className="info-row">
-              <span className="info-label">Giới tính</span>
-              {editing ? (
-                <select className="form-input" value={form.gender} onChange={e => setForm({ ...form, gender: e.target.value })}>
-                  <option value="">-- Chọn --</option>
-                  <option value="MALE">Nam</option>
-                  <option value="FEMALE">Nữ</option>
-                  <option value="OTHER">Khác</option>
-                </select>
-              ) : (
-                <span>{GENDER_LABELS[profile.gender] || 'Chưa cập nhật'}</span>
-              )}
+            <div className="form-group" style={{ margin: 0 }}>
+              <label className="form-label">Ngày sinh</label>
+              <input type="date" className="form-input" value={form.date_of_birth} onChange={e => setForm(f => ({ ...f, date_of_birth: e.target.value }))} />
             </div>
-            <div className="info-row">
-              <span className="info-label">Ngày tham gia</span>
-              <span>{profile.created_at ? new Date(profile.created_at).toLocaleDateString('vi-VN') : '—'}</span>
+            <div className="form-group" style={{ margin: 0 }}>
+              <label className="form-label">Giới tính</label>
+              <select className="form-input" value={form.gender} onChange={e => setForm(f => ({ ...f, gender: e.target.value }))}>
+                <option value="">— Chọn —</option>
+                <option value="MALE">Nam</option>
+                <option value="FEMALE">Nữ</option>
+                <option value="OTHER">Khác</option>
+              </select>
             </div>
-            <div className="info-row">
-              <span className="info-label">Tổng đơn hàng</span>
-              <span className="text-primary" style={{ fontWeight: 700 }}>{orders.length} đơn</span>
+            <div className="form-group" style={{ margin: 0, gridColumn: '1 / -1' }}>
+              <label className="form-label">URL ảnh đại diện</label>
+              <input className="form-input" value={avatarInput} onChange={e => setAvatarInput(e.target.value)} placeholder="https://..." />
             </div>
           </div>
+          <div style={{ marginTop: '1rem', display: 'flex', gap: '0.75rem' }}>
+            <button className="btn btn-primary" onClick={handleSave} disabled={saving}>
+              {saving ? 'Đang lưu...' : 'Lưu thay đổi'}
+            </button>
+            <button className="btn btn-outline" onClick={() => setEditing(false)}>Huỷ</button>
+          </div>
         </div>
+      )}
 
-        {/* Locked Seats */}
-        <div className="glass-panel">
-          <h3 className="section-title">⏳ Ghế Đang Giữ ({lockedSeats.length})</h3>
-          {lockedSeats.length === 0 ? (
-            <p className="text-secondary" style={{ fontSize: '0.9rem' }}>Bạn không đang giữ ghế nào.</p>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-              {lockedSeats.map(seat => {
-                const lockTime = new Date(seat.locked_at);
-                const expireTime = new Date(lockTime.getTime() + 60000);
-                const remaining = Math.max(0, Math.floor((expireTime - Date.now()) / 1000));
-                return (
-                  <div key={seat.id} className="locked-seat-card">
-                    <div>
-                      <strong>{seat.zones?.events?.title}</strong>
-                      <div className="text-secondary" style={{ fontSize: '0.85rem' }}>
-                        {seat.zones?.name} — Ghế {seat.row_label}{seat.seat_number}
-                      </div>
+      {/* ── Locked seats ── */}
+      {lockedSeats.length > 0 && (
+        <div style={{ background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.2)', borderRadius: 16, padding: '1.25rem', marginBottom: '1.5rem' }}>
+          <h3 style={{ fontSize: '0.95rem', fontWeight: 700, marginBottom: '0.875rem', color: 'var(--warning)' }}>
+            Ghế đang giữ chờ thanh toán ({lockedSeats.length})
+          </h3>
+          <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+            {lockedSeats.map(seat => (
+              <span key={seat.id} style={{ background: 'rgba(245,158,11,0.15)', border: '1px solid rgba(245,158,11,0.3)', borderRadius: 8, padding: '0.3rem 0.625rem', fontSize: '0.8rem', fontWeight: 600 }}>
+                {seat.row_label}{seat.seat_number}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* ── Order history ── */}
+      <div>
+        <h3 style={{ fontSize: '1.1rem', fontWeight: 700, marginBottom: '1rem' }}>Lịch sử đặt vé</h3>
+        {orders.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-secondary)', background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 16 }}>
+            Chưa có đơn hàng nào.
+          </div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+            {orders.map(order => (
+              <div key={order.id} style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 12, padding: '1.125rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '0.625rem' }}>
+                  <div>
+                    <div style={{ fontFamily: 'monospace', fontSize: '0.78rem', color: 'var(--text-muted)', marginBottom: '0.15rem' }}>
+                      #{order.id?.slice(0, 8)?.toUpperCase()}
                     </div>
-                    <div className={`countdown ${remaining < 15 ? 'urgent' : ''}`}>
-                      {remaining > 0 ? `⏱ ${remaining}s` : '⚠️ Hết hạn'}
+                    <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>
+                      {new Date(order.created_at).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
                     </div>
                   </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Order History */}
-      <div className="glass-panel mt-4">
-        <h3 className="section-title">🎫 Lịch Sử Đặt Vé ({orders.length})</h3>
-        {orders.length === 0 ? (
-          <p className="text-secondary">Bạn chưa có đơn hàng nào.</p>
-        ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-            {orders.map(order => (
-              <div key={order.id} className="order-card">
-                <div className="order-header">
-                  <span style={{ fontWeight: 600, fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
-                    Mã đơn: <span style={{ color: 'var(--primary)', fontFamily: 'monospace' }}>{order.id.slice(0, 8).toUpperCase()}...</span>
-                  </span>
-                  <span className={`order-status ${order.status.toLowerCase()}`}>{order.status}</span>
-                  <span style={{ fontWeight: 700, color: 'var(--success)' }}>{Number(order.total_amount).toLocaleString('vi-VN')}đ</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                    {orderStatusBadge(order.status)}
+                    <span style={{ fontWeight: 700, fontSize: '0.95rem', color: 'var(--success)' }}>
+                      {Number(order.total_amount).toLocaleString('vi-VN')}đ
+                    </span>
+                  </div>
                 </div>
-                <div className="order-tickets">
-                  {order.tickets?.map(ticket => (
-                    <div key={ticket.id} className="ticket-chip">
-                      🪑 {ticket.seats?.zones?.name} — {ticket.seats?.row_label}{ticket.seats?.seat_number}
-                    </div>
-                  ))}
-                </div>
+                {order.tickets?.length > 0 && (
+                  <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
+                    {order.tickets.map(ticket => (
+                      <span key={ticket.id} style={{ background: 'rgba(99,102,241,0.1)', border: '1px solid rgba(99,102,241,0.2)', borderRadius: 6, padding: '0.2rem 0.5rem', fontSize: '0.75rem', color: 'var(--indigo)' }}>
+                        {ticket.seats?.row_label}{ticket.seats?.seat_number}
+                        {ticket.seats?.zones?.name && <span style={{ opacity: 0.7 }}> · {ticket.seats.zones.name}</span>}
+                      </span>
+                    ))}
+                  </div>
+                )}
               </div>
             ))}
           </div>
