@@ -10,9 +10,7 @@ const orderService = require('./orderService');
  *   ?eventId=<uuid>            → Lọc theo sự kiện
  *   ?user_id=<uuid>            → Lọc theo người mua
  *   ?status=PAID               → Lọc theo trạng thái (PENDING | PAID | CANCELLED)
- *   ?created_at[gte]=2025-01-01
  *   ?sort=created_at:desc      → Sắp xếp
- *   ?fields=id,status,total_amount
  *   ?page=1&limit=20           → Phân trang
  */
 exports.getAllOrders = catchAsync(async (req, res) => {

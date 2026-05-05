@@ -88,8 +88,8 @@ app.use('/api/events',    require('./modules/events/eventRoutes'));
 app.use('/api/Booking',   require('./modules/Booking/BookingRoutes'));
 app.use('/api/orders',    require('./modules/orders/orderRoutes'));
 app.use('/api/queue',     require('./modules/queue/queueRoutes'));
-app.use('/api/customers', require('./modules/customers/CustomerRoutes'));
-app.use('/api/admin',     require('./modules/admin/AdminRoutes'));
+app.use('/api/customers', require('./modules/customers/customerRoutes'));
+app.use('/api/admin',     require('./modules/admin/adminRoutes'));
 
 // 404 handler
 app.use((req, res, next) => {

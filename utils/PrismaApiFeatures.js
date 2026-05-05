@@ -1,18 +1,4 @@
-/**
- * PrismaApiFeatures
- * -----------------
- * Nhận vào req.query và xây dựng Prisma args object một cách chuẩn xác.
- *
- * Cách dùng:
- *   const features = new PrismaApiFeatures(req.query)
- *     .filter()
- *     .sort()
- *     .limitFields()
- *     .paginate();
- *   const prismaArgs = features.getArgs();
- */
 
-// Các query param đặc biệt, KHÔNG phải là filter field
 const RESERVED_PARAMS = new Set(['page', 'sort', 'limit', 'fields']);
 
 // Các toán tử so sánh được phép
@@ -27,11 +13,6 @@ class PrismaApiFeatures {
     this.prismaArgs = {};
   }
 
-  // ─────────────────────────────────────────────────────────
-  // 1. FILTER
-  // Loại bỏ các reserved fields, chuyển operator như gte/gt/lte/lt
-  // sang format Prisma: ?price[gte]=50 → { price: { gte: 50 } }
-  // ─────────────────────────────────────────────────────────
   filter() {
     const where = {};
 
@@ -78,12 +59,6 @@ class PrismaApiFeatures {
     return this; // Fluent interface — cho phép chain
   }
 
-  // ─────────────────────────────────────────────────────────
-  // 2. SORT
-  // ?sort=role:desc,created_at:asc
-  // → orderBy: [{ role: 'desc' }, { created_at: 'asc' }]
-  // Default: created_at desc
-  // ─────────────────────────────────────────────────────────
   sort() {
     if (this.query.sort) {
       const sortStr = Array.isArray(this.query.sort) ? this.query.sort.join(',') : this.query.sort;
@@ -104,11 +79,6 @@ class PrismaApiFeatures {
     return this;
   }
 
-  // ─────────────────────────────────────────────────────────
-  // 3. LIMIT FIELDS (Field Selection)
-  // ?fields=id,email,full_name
-  // → select: { id: true, email: true, full_name: true }
-  // ─────────────────────────────────────────────────────────
   limitFields() {
     if (this.query.fields) {
       const select = {};

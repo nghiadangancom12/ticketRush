@@ -75,8 +75,6 @@ const saveImage = async (buffer, type = 'events', filename = null) => {
 
 /**
  * Xóa file ảnh ra khỏi ổ cứng.
- * Dùng khi cập nhật ảnh mới (xóa ảnh cũ) hoặc khi xóa resource.
- *
  * @param {string|null} imageUrl - Đường dẫn tương đối của ảnh cần xóa (vd: /img/events/abc.webp)
  *                                 Nếu null/undefined → bỏ qua (không throw lỗi)
  *
