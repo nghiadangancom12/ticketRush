@@ -11,3 +11,9 @@ exports.getCustomerAnalytics = catchAsync(async (req, res) => {
   const data = await adminService.getCustomerAnalytics();
   ResponseFactory.success(res, data);
 });
+
+exports.getCategoryAnalytics = catchAsync(async (req, res) => {
+  const { groupBy = 'both' } = req.query; // age, gender, both
+  const data = await adminService.getCategoryAnalytics(groupBy);
+  ResponseFactory.success(res, data);
+});

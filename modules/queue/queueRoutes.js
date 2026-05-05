@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const queueController = require('./queueController');
 const joinQueueLimiter = require('../../utils/rateLimiter');
-const { verifyToken, restrictTo } = require('../auth/auth.middleware');
+const { verifyToken, restrictTo } = require('../../middlewares/authMiddleware');
 
 // 1. Dành cho User: Xin xếp hàng & Cập nhật vị trí (Dùng POST hoặc GET đều được, nhưng POST phổ biến hơn cho action 'join')
 router.post('/:eventId/join', verifyToken, joinQueueLimiter, queueController.joinQueue);

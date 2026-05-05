@@ -16,6 +16,8 @@ tags:
     description: Seat reservation and booking
   - name: Booking
     description: Giữ ghế, thanh toán và trả ghế
+  - name: Orders
+    description: Quản lý đơn hàng (Admin)
   - name: Customers
     description: Customer purchase history
   - name: Admin
@@ -238,7 +240,142 @@ paths:
           description: Đặt lại mật khẩu thành công và tự động đăng nhập (nhận token mới)
         '400':
           description: Mật khẩu xác nhận không khớp hoặc token không hợp lệ / đã hết hạn
+  /api/users:
+    get:
+      tags: [Users]
+      summary: Lấy danh sách tất cả người dùng (Admin only)
+      description: |
+        Trả về danh sách người dùng với đầy đủ tính năng lọc, sắp xếp,
+        chọn trường và phân trang nhờ `PrismaApiFeatures`.
+
+        ### 🔍 Filter
+        - Lọc theo giá trị cụ thể: `?role=ADMIN`
+        - Lọc theo khoảng (comparison operators):
+          - `?created_at[gte]=2025-01-01` → `created_at >= '2025-01-01'`
+          - `?created_at[lte]=2025-12-31` → `created_at <= '2025-12-31'`
+          - Hỗ trợ: `gte`, `gt`, `lte`, `lt`, `equals`, `not`, `contains`, `startsWith`, `endsWith`
+
+        ### 🔃 Sort
+        - `?sort=created_at:desc` → sắp xếp theo created_at giảm dần
+        - `?sort=role:asc,full_name:desc` → sắp xếp nhiều field
+        - Mặc định: `created_at:desc`
+
+        ### 📐 Field Selection
+        - `?fields=id,email,role,full_name` → chỉ trả về các field được chỉ định
+
+        ### 📄 Pagination
+        - `?page=2&limit=20` → trang 2, mỗi trang 20 bản ghi
+        - Mặc định: `page=1`, `limit=100`
+
+        ### Ví dụ thực tế
+        ```
+        GET /api/users?role=CUSTOMER&sort=created_at:desc&fields=id,email,role&page=1&limit=20
+        GET /api/users?created_at[gte]=2025-01-01&sort=full_name:asc
+        ```
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      parameters:
+        - name: role
+          in: query
+          schema:
+            type: string
+            enum: [ADMIN, CUSTOMER]
+          description: Lọc theo role
+        - name: created_at[gte]
+          in: query
+          schema:
+            type: string
+            format: date-time
+          description: Lọc từ ngày tạo (>=)
+        - name: created_at[lte]
+          in: query
+          schema:
+            type: string
+            format: date-time
+          description: Lọc đến ngày tạo (<=)
+        - name: sort
+          in: query
+          schema:
+            type: string
+            example: "created_at:desc,full_name:asc"
+          description: "Sắp xếp theo field, phân cách bởi dấu phẩy. Mặc định: created_at:desc"
+        - name: fields
+          in: query
+          schema:
+            type: string
+            example: "id,email,full_name,role"
+          description: Chỉ trả về các field được liệt kê
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+          description: Số trang (mặc định 1)
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            default: 100
+          description: Số bản ghi mỗi trang (mặc định 100)
+      responses:
+        '200':
+          description: Lấy danh sách thành công
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "success"
+                  message:
+                    type: string
+                    example: "Lấy danh sách người dùng thành công"
+                  data:
+                    type: object
+                    properties:
+                      results:
+                        type: integer
+                        description: Số bản ghi trong trang hiện tại
+                        example: 20
+                      total:
+                        type: integer
+                        description: Tổng số bản ghi thỏa điều kiện lọc
+                        example: 143
+                      page:
+                        type: integer
+                        example: 1
+                      totalPages:
+                        type: integer
+                        example: 8
+                      data:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            id:
+                              type: string
+                              format: uuid
+                            email:
+                              type: string
+                            full_name:
+                              type: string
+                            role:
+                              type: string
+                              enum: [ADMIN, CUSTOMER]
+                            created_at:
+                              type: string
+                              format: date-time
+        '401':
+          description: Chưa xác thực
+        '403':
+          description: Chỉ Admin mới có quyền truy cập
+
   /api/users/me:
+
     get:
       tags: [Users]
       summary: Lấy profile người dùng hiện tại
@@ -281,6 +418,80 @@ paths:
         '200':
           description: Cập nhật thành công
 
+  /api/users/me/avatar:
+    patch:
+      tags: [Users]
+      summary: Upload / cập nhật ảnh đại diện (avatar)
+      description: |
+        Upload ảnh đại diện mới cho tài khoản đang đăng nhập. Server sẽ tự động:
+        - Resize về **400×400px** (vuông, crop center)
+        - Compress và convert sang **WebP**
+        - Lưu vào `public/img/avatars/` trên server
+        - Xóa avatar cũ (nếu có) sau khi cập nhật thành công
+
+        ### ⚠️ Lưu ý quan trọng
+        - Request phải dùng `Content-Type: multipart/form-data`
+        - Tên field chứa file ảnh phải là **`image`**
+        - Chỉ chấp nhận: `image/jpeg`, `image/png`, `image/webp`
+        - Giới hạn kích thước: **5MB**
+
+        ### 📎 Ví dụ cURL
+        ```bash
+        curl -X PATCH http://localhost:3000/api/users/me/avatar \
+          -H "Authorization: Bearer <token>" \
+          -F "image=@/path/to/avatar.jpg"
+        ```
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - image
+              properties:
+                image:
+                  type: string
+                  format: binary
+                  description: "File ảnh avatar (JPEG / PNG / WebP, tối đa 5MB)"
+      responses:
+        '200':
+          description: Upload và cập nhật avatar thành công
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "success"
+                  message:
+                    type: string
+                    example: "Ảnh đại diện đã được cập nhật!"
+                  data:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                        format: uuid
+                      email:
+                        type: string
+                        example: "user@example.com"
+                      full_name:
+                        type: string
+                        example: "Nguyễn Văn A"
+                      avatar_url:
+                        type: string
+                        example: "/img/avatars/avatars-1746374890456-123456789.webp"
+                        description: Đường dẫn tương đối để truy cập avatar qua HTTP
+        '400':
+          description: Không có file ảnh, định dạng không hợp lệ, hoặc file vượt quá 5MB
+        '401':
+          description: Chưa xác thực
+
   /api/users/{userId}/grant-admin:
     patch:
       tags: [Users]
@@ -318,6 +529,37 @@ paths:
           description: Hủy quyền thành công
         '403':
           description: Chỉ admin mới có thể hủy quyền
+
+  /api/users/{userId}:
+    delete:
+      tags: [Users]
+      summary: Xóa mềm người dùng (Admin only)
+      description: |
+        Đánh dấu tài khoản người dùng là đã xóa bằng cách set `deleted_at = now()`.
+        Dữ liệu **không** bị xóa khỏi database.
+        Sau khi xóa mềm, tài khoản sẽ bị ẩn khỏi tất cả các query tìm kiếm (Global Filter).
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: ID của người dùng cần xóa
+      responses:
+        '204':
+          description: Xóa mềm thành công (No Content)
+        '400':
+          description: User đã bị xóa trước đó
+        '401':
+          description: Chưa xác thực
+        '403':
+          description: Chỉ Admin mới có quyền thực hiện thao tác này
+        '404':
+          description: Không tìm thấy người dùng
 
   /api/events:
     get:
@@ -378,35 +620,115 @@ paths:
           description: Lấy thành công
         '404':
           description: Sự kiện không tồn tại
-
-  /api/events/{id}/image:
-    patch:
+    delete:
       tags: [Events]
-      summary: Cập nhật hình ảnh sự kiện (Admin only)
+      summary: Xóa mềm sự kiện (Admin only)
+      description: |
+        Cập nhật `status` của sự kiện thành `DELETED` thay vì xóa hàng thật khỏi database.
+        Sau khi xóa mềm, sự kiện sẽ bị ẩn khỏi tất cả các query tìm kiếm (Global Filter).
+        Các dữ liệu liên quan (zones, seats, tickets) vẫn được giữ nguyên để phục vụ audit.
       security:
         - bearerAuth: []
+        - cookieAuth: []
       parameters:
         - name: id
           in: path
           required: true
           schema:
             type: string
+            format: uuid
+          description: ID của sự kiện cần xóa
+      responses:
+        '204':
+          description: Xóa mềm thành công (No Content)
+        '400':
+          description: Sự kiện đã bị xóa trước đó
+        '401':
+          description: Chưa xác thực
+        '403':
+          description: Chỉ Admin mới có quyền thực hiện thao tác này
+        '404':
+          description: Sự kiện không tồn tại
+
+  /api/events/{id}/image:
+    patch:
+      tags: [Events]
+      summary: Upload / cập nhật hình ảnh sự kiện (Admin only)
+      description: |
+        Upload file ảnh cho sự kiện. Server sẽ tự động:
+        - Resize về **1200×630px** (tỉ lệ OG Image chuẩn)
+        - Compress và convert sang **WebP** để tối ưu dung lượng
+        - Lưu vào `public/img/events/` trên server
+        - Xóa ảnh cũ (nếu có) sau khi cập nhật thành công
+
+        ### ⚠️ Lưu ý quan trọng
+        - Request phải dùng `Content-Type: multipart/form-data`
+        - Tên field chứa file ảnh phải là **`image`**
+        - Chỉ chấp nhận: `image/jpeg`, `image/png`, `image/webp`
+        - Giới hạn kích thước: **5MB**
+        
+        ### 📎 Ví dụ cURL
+        ```bash
+        curl -X PATCH http://localhost:3000/api/events/{id}/image \
+          -H "Authorization: Bearer <token>" \
+          -F "image=@/path/to/photo.jpg"
+        ```
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: ID của sự kiện cần cập nhật ảnh
       requestBody:
         required: true
         content:
-          application/json:
+          multipart/form-data:
             schema:
               type: object
               required:
-                - image_url
+                - image
               properties:
-                image_url:
+                image:
                   type: string
+                  format: binary
+                  description: "File ảnh cần upload (JPEG / PNG / WebP, tối đa 5MB)"
       responses:
         '200':
-          description: Cập nhật ảnh thành công
+          description: Upload và cập nhật ảnh thành công
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "success"
+                  message:
+                    type: string
+                    example: "Hình ảnh sự kiện đã được cập nhật!"
+                  data:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                        format: uuid
+                      image_url:
+                        type: string
+                        example: "/img/events/events-1746374890123-987654321.webp"
+                        description: Đường dẫn tương đối để truy cập ảnh qua HTTP
+        '400':
+          description: Không có file ảnh, định dạng không hợp lệ, hoặc file vượt quá 5MB
+        '401':
+          description: Chưa xác thực
         '403':
-          description: Chỉ admin mới có thể cập nhật ảnh
+          description: Chỉ Admin mới có quyền cập nhật ảnh
+        '404':
+          description: Sự kiện không tồn tại
 
   /api/Booking/hold:
     post:
@@ -470,6 +792,210 @@ paths:
         '200':
           description: Lấy lịch sử thành công
 
+  /api/orders:
+    get:
+      tags: [Orders]
+      summary: Lấy danh sách đơn hàng (Admin only)
+      description: |
+        Trả về danh sách đơn hàng kèm thông tin người mua, vé, ghế và sự kiện.
+        Hỗ trợ lọc theo nhiều tiêu chí kết hợp.
+
+        ### 🔍 Filter
+        | Query param | Ý nghĩa | Ví dụ |
+        |---|---|---|
+        | `eventId` | Lọc theo sự kiện | `?eventId=abc-123` |
+        | `user_id` | Lọc theo người mua | `?user_id=xyz-456` |
+        | `status` | Lọc theo trạng thái | `?status=PAID` |
+        | `created_at[gte]` | Từ ngày tạo | `?created_at[gte]=2025-01-01` |
+        | `created_at[lte]` | Đến ngày tạo | `?created_at[lte]=2025-12-31` |
+
+        ### 🔃 Sort
+        `?sort=created_at:desc` hoặc `?sort=total_amount:asc`
+
+        ### 📄 Pagination
+        `?page=1&limit=20` (mặc định: page=1, limit=100)
+
+        ### Ví dụ thực tế
+        ```
+        GET /api/orders?eventId=abc&status=PAID&sort=created_at:desc&page=1&limit=10
+        GET /api/orders?user_id=xyz&created_at[gte]=2025-01-01
+        ```
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      parameters:
+        - name: eventId
+          in: query
+          schema:
+            type: string
+            format: uuid
+          description: Lọc theo ID sự kiện
+        - name: user_id
+          in: query
+          schema:
+            type: string
+            format: uuid
+          description: Lọc theo ID người mua
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [PENDING, PAID, CANCELLED]
+          description: Lọc theo trạng thái đơn hàng
+        - name: created_at[gte]
+          in: query
+          schema:
+            type: string
+            format: date-time
+          description: Lọc từ ngày tạo (>=)
+        - name: created_at[lte]
+          in: query
+          schema:
+            type: string
+            format: date-time
+          description: Lọc đến ngày tạo (<=)
+        - name: sort
+          in: query
+          schema:
+            type: string
+            example: "created_at:desc"
+          description: "Sắp xếp theo field. Mặc định: created_at:desc"
+        - name: fields
+          in: query
+          schema:
+            type: string
+            example: "id,user_id,status,total_amount,created_at"
+          description: Chỉ trả về các field được liệt kê
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            default: 100
+      responses:
+        '200':
+          description: Lấy danh sách thành công
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "success"
+                  message:
+                    type: string
+                    example: "Lấy danh sách đơn hàng thành công"
+                  data:
+                    type: object
+                    properties:
+                      results:
+                        type: integer
+                        example: 10
+                      total:
+                        type: integer
+                        example: 85
+                      page:
+                        type: integer
+                        example: 1
+                      totalPages:
+                        type: integer
+                        example: 9
+                      data:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            id:
+                              type: string
+                              format: uuid
+                            status:
+                              type: string
+                              enum: [PENDING, PAID, CANCELLED]
+                            total_amount:
+                              type: number
+                              example: 350000
+                            created_at:
+                              type: string
+                              format: date-time
+                            users:
+                              type: object
+                              properties:
+                                id:
+                                  type: string
+                                email:
+                                  type: string
+                                full_name:
+                                  type: string
+                            tickets:
+                              type: array
+                              items:
+                                type: object
+                                properties:
+                                  id:
+                                    type: string
+                                  qr_code:
+                                    type: string
+                                  seats:
+                                    type: object
+                                    properties:
+                                      row_label:
+                                        type: string
+                                      seat_number:
+                                        type: integer
+                                      zones:
+                                        type: object
+                                        properties:
+                                          name:
+                                            type: string
+                                          events:
+                                            type: object
+                                            properties:
+                                              id:
+                                                type: string
+                                              title:
+                                                type: string
+                                              start_time:
+                                                type: string
+                                              location:
+                                                type: string
+        '401':
+          description: Chưa xác thực
+        '403':
+          description: Chỉ Admin mới có quyền truy cập
+
+  /api/orders/{orderId}:
+    get:
+      tags: [Orders]
+      summary: Lấy chi tiết đơn hàng (Admin only)
+      description: Trả về đầy đủ thông tin đơn hàng bao gồm người mua, danh sách vé, ghế và sự kiện liên quan.
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      parameters:
+        - name: orderId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: ID đơn hàng
+      responses:
+        '200':
+          description: Lấy chi tiết thành công
+        '401':
+          description: Chưa xác thực
+        '403':
+          description: Chỉ Admin mới có quyền truy cập
+        '404':
+          description: Không tìm thấy đơn hàng
+
   /api/admin/dashboard:
     get:
       tags: [Admin]
@@ -494,6 +1020,30 @@ paths:
           description: Lấy phân tích thành công
         '403':
           description: Chỉ admin mới có thể xem
+
+  /api/admin/category-analytics:
+    get:
+      tags: [Admin]
+      summary: Phân tích khách hàng theo danh mục (Admin only)
+      description: |
+        Thống kê số lượng người dùng đã mua vé (đơn hàng PAID) theo danh mục sự kiện.
+        Hỗ trợ nhóm theo độ tuổi, giới tính hoặc cả hai.
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      parameters:
+        - name: groupBy
+          in: query
+          schema:
+            type: string
+            enum: [age, gender, both]
+            default: both
+          description: Tiêu chí nhóm dữ liệu
+      responses:
+        '200':
+          description: Lấy phân tích thành công
+        '403':
+          description: Chỉ admin mới có quyền xem
 
   /api/queue/{eventId}/join:
     post:

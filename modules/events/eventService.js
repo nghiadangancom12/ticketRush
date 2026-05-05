@@ -1,6 +1,6 @@
 const eventRepository = require('./eventRepository');
 const AppError = require('../errorHandling/AppError');
-
+const imageHelper = require('../../utils/imageHelper');
 class EventService {
   async getAllPublished() {
     return eventRepository.findAllPublished();
@@ -12,7 +12,7 @@ class EventService {
     return event;
   }
 
-  async create({ title, description, start_time, location, zones, adminId }) {
+  async create({ title, description, start_time, location, category_id, zones, adminId }) {
     // Không cần Bước 1 & 2 nữa. Nếu lọt được vào đây, dữ liệu CHẮC CHẮN ĐÃ CHUẨN 100%.
 
     // 1. Map dữ liệu Zones và Seats
@@ -37,6 +37,7 @@ class EventService {
       location,
       status: 'PUBLISHED',
       admin_id: adminId,
+      category_id: category_id || null, // 🌟 MỚI: Truyền ID danh mục nếu có
       zones: {
         create: zonesDataToInsert
       }
@@ -51,6 +52,23 @@ class EventService {
     if (!event) throw new AppError('Sự kiện không tồn tại', 404);
 
     return eventRepository.update(eventId, { image_url });
+  }
+
+  /**
+   * Soft Delete Event
+   * Thay vì xóa thật, ta cập nhật status → 'DELETED'.
+   * Global filter trong database.js sẽ tự động loại event này khỏi mọi query read.
+   */
+  async deleteEvent(eventId) {
+    const event = await eventRepository.findById(eventId);
+    if (!event) throw new AppError('Sự kiện không tồn tại', 404);
+
+    // Guard: đã bị xóa mềm từ trước (trường hợp bypass filter)
+    if (event.status === 'DELETED') {
+      throw new AppError('Sự kiện đã bị xóa trước đó', 400);
+    }
+
+    await eventRepository.softDelete(eventId);
   }
 }
 

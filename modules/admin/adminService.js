@@ -30,6 +30,16 @@ class AdminService {
     };
   }
 
+  async getCategoryAnalytics(groupBy) {
+    if (groupBy === 'age') {
+      return await adminRepository.getDemographicsByAge();
+    } else if (groupBy === 'gender') {
+      return await adminRepository.getDemographicsByGender();
+    } else {
+      return await adminRepository.getDemographicsByBoth();
+    }
+  }
+
   async getDashboardStats() {
     return adminRepository.getDashboardStats();
   }

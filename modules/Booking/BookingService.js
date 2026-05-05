@@ -23,13 +23,17 @@ class BookingService {
             }
 
             // 2. NGHIỆP VỤ: Row-Level Locking để chống Double-booking
-            const placeholders = seatIds.map((_, i) => `$${i + 1}`).join(', ');
+            const placeholders = seatIds.map((_, i) => `$${i + 1}::uuid`).join(', ');
             const query = `
         SELECT id, status FROM "seats"
         WHERE id IN (${placeholders})
         FOR UPDATE
       `;
             const lockedSeatsQuery = await tx.$queryRawUnsafe(query, ...seatIds);
+
+            if (lockedSeatsQuery.length !== seatIds.length) {
+                throw new AppError('Một hoặc nhiều ghế không tồn tại hoặc không hợp lệ.', 400);
+            }
 
             const unavailable = lockedSeatsQuery.filter(s => s.status !== 'AVAILABLE');
             if (unavailable.length > 0) {
@@ -104,6 +108,9 @@ class BookingService {
                     status: 'PAID',
                     users: {
                         connect: { id: userId }
+                    },
+                    events: {
+                        connect: { id: eventId }
                     }
                 }
             });

@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const customerController = require('./customerController');
-const { verifyToken } = require('../auth/auth.middleware');
+const { verifyToken } = require('../../middlewares/authMiddleware');
 
 // Protected routes (require authentication)
 //router.get('/me', verifyToken, customerController.getProfile);
