@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 
@@ -64,8 +64,258 @@ const icons = {
   events: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="4" width="18" height="18" rx="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" /></svg>,
   analytics: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="20" x2="18" y2="10" /><line x1="12" y1="20" x2="12" y2="4" /><line x1="6" y1="20" x2="6" y2="14" /></svg>,
   tickets: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M2 9a3 3 0 0 1 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 0 1 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2z" /></svg>,
-  settings: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" /></svg>,
+  users: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" /></svg>,
 };
+
+/* ─── MODULE-LEVEL: CategoriesView (stable ref → no focus loss) ─── */
+function CategoriesView({ allCategories, newCatForm, setNewCatForm, addingCat, handleAddCategory, handleDeleteCategory }) {
+  return (
+    <div>
+      <div style={{ marginBottom: '1.5rem' }}>
+        <h2 style={{ fontSize: '1.15rem', fontWeight: 800 }}>Quản lý Thể loại</h2>
+        <p style={{ color: 'var(--text-secondary)', fontSize: '0.875rem', marginTop: '0.25rem' }}>Tạo và quản lý danh mục sự kiện</p>
+      </div>
+
+      {/* ── Add form ── */}
+      <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 12, padding: '1.25rem', marginBottom: '1.5rem' }}>
+        <h3 style={{ fontSize: '0.95rem', fontWeight: 700, marginBottom: '1rem' }}>Thêm thể loại mới</h3>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.875rem', marginBottom: '0.875rem' }}>
+          <div className="form-group" style={{ margin: 0 }}>
+            <label className="form-label">Tên thể loại *</label>
+            <input type="text" className="form-input" placeholder="VD: Âm nhạc"
+              value={newCatForm.name}
+              onChange={e => setNewCatForm({ ...newCatForm, name: e.target.value })}
+              onKeyDown={e => e.key === 'Enter' && handleAddCategory()}
+            />
+          </div>
+          <div className="form-group" style={{ margin: 0 }}>
+            <label className="form-label">Mô tả</label>
+            <input type="text" className="form-input" placeholder="VD: Các buổi hòa nhạc, liveshow..."
+              value={newCatForm.description}
+              onChange={e => setNewCatForm({ ...newCatForm, description: e.target.value })}
+            />
+          </div>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'flex-end', gap: '1rem', flexWrap: 'wrap' }}>
+          <div style={{ flex: '1 1 220px' }}>
+            <label className="form-label">Ảnh đại diện (tuỳ chọn)</label>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', cursor: 'pointer' }}>
+              {newCatForm.imagePreview
+                ? <img src={newCatForm.imagePreview} alt="preview" style={{ width: 72, height: 44, objectFit: 'cover', borderRadius: 6, border: '1px solid var(--border)' }} />
+                : <div style={{ width: 72, height: 44, borderRadius: 6, background: 'rgba(255,255,255,0.05)', border: '1px dashed var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.2rem' }}>🖼</div>
+              }
+              <span className="btn btn-outline" style={{ fontSize: '0.78rem', padding: '0.3rem 0.625rem', pointerEvents: 'none' }}>Chọn ảnh</span>
+              <input type="file" accept="image/*" style={{ display: 'none' }}
+                onChange={e => {
+                  const f = e.target.files[0];
+                  if (f) setNewCatForm({ ...newCatForm, imageFile: f, imagePreview: URL.createObjectURL(f) });
+                }}
+              />
+            </label>
+          </div>
+          <button className="btn btn-primary" style={{ fontSize: '0.85rem', alignSelf: 'flex-end' }}
+            onClick={handleAddCategory} disabled={addingCat || !newCatForm.name.trim()}>
+            {addingCat ? 'Đang tạo...' : '+ Thêm thể loại'}
+          </button>
+        </div>
+      </div>
+
+      {/* ── Categories grid ── */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(230px, 1fr))', gap: '1rem' }}>
+        {allCategories.length === 0
+          ? <div style={{ gridColumn: '1/-1', textAlign: 'center', color: 'var(--text-muted)', padding: '3rem', background: 'var(--bg-card)', borderRadius: 12, border: '1px solid var(--border)' }}>Chưa có thể loại nào.</div>
+          : allCategories.map(cat => (
+            <div key={cat.id} style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 12, overflow: 'hidden' }}>
+              {cat.image_url
+                ? <img src={cat.image_url} alt={cat.name} style={{ width: '100%', height: 120, objectFit: 'cover' }} />
+                : <div style={{ width: '100%', height: 120, background: 'linear-gradient(135deg,rgba(124,58,237,.3),rgba(6,182,212,.2))', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '2.5rem' }}>🏷</div>
+              }
+              <div style={{ padding: '0.875rem' }}>
+                <div style={{ fontWeight: 700, fontSize: '0.95rem', marginBottom: '0.25rem' }}>{cat.name}</div>
+                <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', marginBottom: '0.75rem', minHeight: '1.1em' }}>{cat.description || '—'}</div>
+                <button className="btn" style={{ fontSize: '0.72rem', padding: '0.3rem 0.625rem', background: 'rgba(239,68,68,0.12)', color: 'var(--danger)', border: '1px solid rgba(239,68,68,0.3)', width: '100%' }}
+                  onClick={() => handleDeleteCategory(cat.id)}>Xóa thể loại</button>
+              </div>
+            </div>
+          ))}
+      </div>
+    </div>
+  );
+}
+
+/* ─── MODULE-LEVEL: CreateEventModal (stable ref → no focus loss) ─── */
+function CreateEventModal({ newEvent, setNewEvent, allCategories, zones, setZones, activeZoneId, setActiveZoneId, grid, setGrid, maxRows, maxCols, creating, createMsg, onSubmit, onClose, updateZoneInfo }) {
+  const [seatEraseMode, setSeatEraseMode] = useState(false);
+  const [seatDrag, setSeatDrag] = useState(null);
+  const [imageFile, setImageFile] = useState(null);
+  const [imagePreview, setImagePreview] = useState('');
+
+  // Refs to avoid stale closures in mouse event handlers
+  const isDraggingRef = useRef(false);
+  const dragRef = useRef(null);
+  const eraseRef = useRef(false);
+  const activeZoneIdRef = useRef(activeZoneId);
+  useEffect(() => { activeZoneIdRef.current = activeZoneId; }, [activeZoneId]);
+  useEffect(() => { eraseRef.current = seatEraseMode; }, [seatEraseMode]);
+
+  const handleMouseDown = (r, c) => {
+    isDraggingRef.current = true;
+    const d = { r0: r, c0: c, r1: r, c1: c };
+    dragRef.current = d;
+    setSeatDrag({ ...d });
+  };
+  const handleMouseEnter = (r, c) => {
+    if (!isDraggingRef.current) return;
+    const d = { ...dragRef.current, r1: r, c1: c };
+    dragRef.current = d;
+    setSeatDrag({ ...d });
+  };
+  const handleMouseUp = () => {
+    if (!isDraggingRef.current) return;
+    isDraggingRef.current = false;
+    const d = dragRef.current;
+    dragRef.current = null;
+    setSeatDrag(null);
+    if (!d) return;
+    setGrid(prev => {
+      const g = prev.map(row => [...row]);
+      const minR = Math.min(d.r0, d.r1), maxR = Math.max(d.r0, d.r1);
+      const minC = Math.min(d.c0, d.c1), maxC = Math.max(d.c0, d.c1);
+      for (let r = minR; r <= maxR; r++)
+        for (let c = minC; c <= maxC; c++)
+          g[r][c] = eraseRef.current ? null : activeZoneIdRef.current;
+      return g;
+    });
+  };
+
+  const clearGrid = () => setGrid(Array.from({ length: maxRows }, () => Array(maxCols).fill(null)));
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(8px)', zIndex: 200, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '2rem', overflowY: 'auto' }}>
+      <div style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border)', borderRadius: 16, width: '100%', maxWidth: 900, padding: '1.75rem' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+          <h2 style={{ fontSize: '1.2rem', fontWeight: 800 }}>Tạo Sự Kiện Mới</h2>
+          <button className="icon-btn" onClick={onClose}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+          </button>
+        </div>
+
+        {createMsg.text && (
+          <div className={`alert ${createMsg.type === 'success' ? 'alert-success' : 'alert-error'}`} style={{ marginBottom: '1rem' }}>{createMsg.text}</div>
+        )}
+
+        <form onSubmit={e => onSubmit(e, imageFile)}>
+          {/* Basic info */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '1rem', marginBottom: '1rem' }}>
+            <div className="form-group" style={{ margin: 0 }}><label className="form-label">Tên sự kiện *</label><input type="text" className="form-input" required value={newEvent.title} onChange={e => setNewEvent({ ...newEvent, title: e.target.value })} /></div>
+            <div className="form-group" style={{ margin: 0 }}><label className="form-label">Thời gian *</label><input type="datetime-local" className="form-input" required value={newEvent.start_time} onChange={e => setNewEvent({ ...newEvent, start_time: e.target.value })} /></div>
+            <div className="form-group" style={{ margin: 0 }}><label className="form-label">Địa điểm *</label><input type="text" className="form-input" required value={newEvent.location} onChange={e => setNewEvent({ ...newEvent, location: e.target.value })} /></div>
+            <div className="form-group" style={{ margin: 0 }}>
+              <label className="form-label">Thể loại</label>
+              <select className="form-input" value={newEvent.category_id || ''} onChange={e => setNewEvent({ ...newEvent, category_id: e.target.value || '' })}>
+                <option value="">— Không chọn —</option>
+                {allCategories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+              </select>
+            </div>
+            <div className="form-group" style={{ margin: 0, gridColumn: '1 / -1' }}><label className="form-label">Mô tả</label><input type="text" className="form-input" value={newEvent.description} onChange={e => setNewEvent({ ...newEvent, description: e.target.value })} /></div>
+          </div>
+
+          {/* Event image upload */}
+          <div style={{ marginBottom: '1.25rem' }}>
+            <h4 style={{ fontSize: '0.875rem', fontWeight: 600, marginBottom: '0.5rem' }}>Ảnh sự kiện (tuỳ chọn)</h4>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '0.875rem', cursor: 'pointer' }}>
+              {imagePreview
+                ? <img src={imagePreview} alt="preview" style={{ width: 160, height: 90, objectFit: 'cover', borderRadius: 8, border: '1px solid var(--border)' }} />
+                : <div style={{ width: 160, height: 90, background: 'rgba(255,255,255,0.04)', border: '1px dashed var(--border)', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', fontSize: '0.8rem', gap: '0.3rem' }}>🖼 Chưa chọn</div>
+              }
+              <span className="btn btn-outline" style={{ fontSize: '0.8rem', padding: '0.4rem 0.875rem', pointerEvents: 'none' }}>Chọn ảnh</span>
+              <input type="file" accept="image/*" style={{ display: 'none' }}
+                onChange={e => { const f = e.target.files[0]; if (f) { setImageFile(f); setImagePreview(URL.createObjectURL(f)); } }}
+              />
+            </label>
+          </div>
+
+          {/* Zone definition */}
+          <h4 style={{ fontSize: '0.875rem', fontWeight: 600, marginBottom: '0.75rem' }}>1. Định nghĩa phân khu</h4>
+          <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '1.25rem', flexWrap: 'wrap' }}>
+            {zones.map((z, idx) => (
+              <div key={z.id} style={{ background: activeZoneId === z.id ? `${ZONE_COLORS[idx % ZONE_COLORS.length]}18` : 'rgba(255,255,255,0.04)', border: `2px solid ${activeZoneId === z.id ? ZONE_COLORS[idx % ZONE_COLORS.length] : 'transparent'}`, borderRadius: 10, padding: '0.875rem', flex: '1 1 160px', cursor: 'pointer' }} onClick={() => setActiveZoneId(z.id)}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                  <div style={{ width: 10, height: 10, borderRadius: '50%', background: ZONE_COLORS[idx % ZONE_COLORS.length] }} />
+                  <span style={{ fontSize: '0.78rem', fontWeight: 600 }}>Zone {idx + 1}</span>
+                  {activeZoneId === z.id && <span className="badge badge-purple" style={{ fontSize: '0.6rem', marginLeft: 'auto' }}>Đang chọn</span>}
+                </div>
+                <input type="text" className="form-input" value={z.name} onChange={e => updateZoneInfo(idx, 'name', e.target.value)} placeholder="Tên khu" style={{ fontSize: '0.8rem', marginBottom: '0.4rem' }} onClick={e => e.stopPropagation()} />
+                <input type="number" className="form-input" value={z.price} onChange={e => updateZoneInfo(idx, 'price', e.target.value)} placeholder="Giá (VNĐ)" style={{ fontSize: '0.8rem' }} onClick={e => e.stopPropagation()} />
+              </div>
+            ))}
+            <button type="button" className="btn btn-outline" style={{ alignSelf: 'center', fontSize: '0.8rem' }} onClick={() => setZones([...zones, { id: Date.now(), name: 'Zone Mới', price: '0' }])}>+ Thêm khu</button>
+          </div>
+
+          {/* Drag seat grid */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.4rem' }}>
+            <h4 style={{ fontSize: '0.875rem', fontWeight: 600 }}>2. Vẽ sơ đồ khán đài</h4>
+            <div style={{ display: 'flex', gap: '0.5rem' }}>
+              <button type="button"
+                style={{ fontSize: '0.72rem', padding: '0.25rem 0.625rem', borderRadius: 6, border: `1px solid ${seatEraseMode ? 'rgba(239,68,68,0.5)' : 'var(--border)'}`, background: seatEraseMode ? 'rgba(239,68,68,0.12)' : 'transparent', color: seatEraseMode ? 'var(--danger)' : 'var(--text-secondary)', cursor: 'pointer' }}
+                onClick={() => setSeatEraseMode(prev => !prev)}>
+                {seatEraseMode ? '🧹 Chế độ xóa' : '✏️ Chế độ vẽ'}
+              </button>
+              <button type="button" className="btn btn-outline" style={{ fontSize: '0.72rem', padding: '0.25rem 0.625rem' }} onClick={clearGrid}>Xóa tất cả</button>
+            </div>
+          </div>
+          <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginBottom: '0.75rem' }}>
+            Kéo để tô vùng ghế (m×n). Nhả chuột để xác nhận. Chuyển sang chế độ xóa để tẩy.
+          </p>
+          <div
+            style={{ overflowX: 'auto', padding: '1rem', background: 'rgba(0,0,0,0.4)', borderRadius: 8, marginBottom: '1rem', userSelect: 'none', cursor: 'crosshair' }}
+            onMouseUp={handleMouseUp}
+            onMouseLeave={handleMouseUp}
+          >
+            {'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('').slice(0, maxRows).map((rowChar, rIndex) => (
+              <div key={rIndex} style={{ display: 'flex', gap: 3, marginBottom: 3, alignItems: 'center' }}>
+                <span style={{ width: 14, fontSize: '9px', color: 'var(--text-muted)', textAlign: 'right', marginRight: 3, flexShrink: 0 }}>{rowChar}</span>
+                {grid[rIndex].map((cellVal, cIndex) => {
+                  const inSel = seatDrag &&
+                    rIndex >= Math.min(seatDrag.r0, seatDrag.r1) && rIndex <= Math.max(seatDrag.r0, seatDrag.r1) &&
+                    cIndex >= Math.min(seatDrag.c0, seatDrag.c1) && cIndex <= Math.max(seatDrag.c0, seatDrag.c1);
+                  const zIdx = zones.findIndex(z => z.id === cellVal);
+                  const activeZoneIdx = zones.findIndex(z => z.id === activeZoneId);
+                  const bg = inSel
+                    ? (seatEraseMode ? 'rgba(239,68,68,0.65)' : `${ZONE_COLORS[activeZoneIdx % ZONE_COLORS.length]}cc`)
+                    : cellVal ? (ZONE_COLORS[zIdx % ZONE_COLORS.length] || '#6366f1') : '#1e1e30';
+                  return (
+                    <div
+                      key={cIndex}
+                      onMouseDown={() => handleMouseDown(rIndex, cIndex)}
+                      onMouseEnter={() => handleMouseEnter(rIndex, cIndex)}
+                      style={{ width: 20, height: 20, background: bg, borderRadius: 3, flexShrink: 0, border: `1px solid ${inSel ? 'rgba(255,255,255,0.35)' : 'rgba(255,255,255,0.04)'}` }}
+                      title={cellVal ? zones.find(z => z.id === cellVal)?.name : 'Trống'}
+                    />
+                  );
+                })}
+              </div>
+            ))}
+          </div>
+
+          {/* Legend */}
+          <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', marginBottom: '1.25rem' }}>
+            {zones.map((z, idx) => (
+              <div key={z.id} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.78rem' }}>
+                <div style={{ width: 10, height: 10, borderRadius: '50%', background: ZONE_COLORS[idx % ZONE_COLORS.length] }} />
+                {z.name} — {Number(z.price).toLocaleString('vi-VN')}đ
+              </div>
+            ))}
+          </div>
+
+          <button type="submit" className="btn btn-primary" style={{ width: '100%', justifyContent: 'center', padding: '0.875rem', fontSize: '0.95rem' }} disabled={creating}>
+            {creating ? <><span className="spinner" style={{ width: 16, height: 16, borderWidth: 2 }} />Đang lưu...</> : 'Tạo Sự Kiện'}
+          </button>
+        </form>
+      </div>
+    </div>
+  );
+}
 
 export default function AdminPage() {
   const navigate = useNavigate();
@@ -73,6 +323,13 @@ export default function AdminPage() {
   const [data, setData] = useState(null);
   const [analytics, setAnalytics] = useState(null);
   const [events, setEvents] = useState([]);
+  const [orders, setOrders] = useState([]);
+  const [ordersLoading, setOrdersLoading] = useState(false);
+  const [selectedOrder, setSelectedOrder] = useState(null);
+  const [orderDetailLoading, setOrderDetailLoading] = useState(false);
+  const [users, setUsers] = useState([]);
+  const [usersLoading, setUsersLoading] = useState(false);
+  const [categoryAnalytics, setCategoryAnalytics] = useState(null);
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState('');
 
@@ -80,10 +337,15 @@ export default function AdminPage() {
   const [selectedEventId, setSelectedEventId] = useState('');
   const [queueToggles, setQueueToggles] = useState({});
   const [queueLoading, setQueueLoading] = useState('');
+  const [imageUploading, setImageUploading] = useState('');
+  const [deletingEventId, setDeletingEventId] = useState('');
 
   // Create event form
   const [showCreate, setShowCreate] = useState(false);
-  const [newEvent, setNewEvent] = useState({ title: '', description: '', location: '', start_time: '' });
+  const [newEvent, setNewEvent] = useState({ title: '', description: '', location: '', start_time: '', category_id: '' });
+  const [allCategories, setAllCategories] = useState([]);
+  const [newCatForm, setNewCatForm] = useState({ name: '', description: '', imageFile: null, imagePreview: '' });
+  const [addingCat, setAddingCat] = useState(false);
   const [zones, setZones] = useState([{ id: 1, name: 'VIP', price: '2500000' }, { id: 2, name: 'GA A', price: '1500000' }, { id: 3, name: 'GA B', price: '900000' }]);
   const [activeZoneId, setActiveZoneId] = useState(1);
   const maxRows = 15; const maxCols = 30;
@@ -95,11 +357,13 @@ export default function AdminPage() {
     if (!token()) { navigate('/auth'); return; }
     const fetchAll = async () => {
       try {
-        const [dashRes, eventsRes] = await Promise.all([
+        const [dashRes, eventsRes, catsRes] = await Promise.all([
           axios.get(`${API}/admin/dashboard`, { headers: authHeader() }),
           axios.get(`${API}/events`),
+          axios.get(`${API}/categories`),
         ]);
         setData(dashRes.data.data);
+        setAllCategories(catsRes.data.data || []);
         const evList = eventsRes.data.data || [];
         setEvents(evList);
         if (evList.length > 0) setSelectedEventId(evList[0].id);
@@ -119,7 +383,92 @@ export default function AdminPage() {
     } catch { setAnalytics({ genderDemographics: [], topSpenders: [] }); }
   };
 
-  useEffect(() => { if (activeView === 'analytics') fetchAnalytics(); }, [activeView]);
+  const fetchCategoryAnalytics = async () => {
+    if (categoryAnalytics) return;
+    try {
+      const res = await axios.get(`${API}/admin/category-analytics?groupBy=both`, { headers: authHeader() });
+      setCategoryAnalytics(res.data.data || []);
+    } catch { setCategoryAnalytics([]); }
+  };
+
+  const fetchOrders = async () => {
+    setOrdersLoading(true);
+    try {
+      const res = await axios.get(`${API}/orders?limit=50`, { headers: authHeader() });
+      setOrders(res.data.data?.data || res.data.data?.orders || []);
+    } catch { setOrders([]); } finally { setOrdersLoading(false); }
+  };
+
+  const fetchOrderDetail = async (orderId) => {
+    setOrderDetailLoading(true);
+    try {
+      const res = await axios.get(`${API}/orders/${orderId}`, { headers: authHeader() });
+      setSelectedOrder(res.data.data);
+    } catch { setSelectedOrder(null); } finally { setOrderDetailLoading(false); }
+  };
+
+  const fetchUsers = async () => {
+    setUsersLoading(true);
+    try {
+      const res = await axios.get(`${API}/users`, { headers: authHeader() });
+      setUsers(res.data.data?.data || res.data.data?.users || []);
+    } catch { setUsers([]); } finally { setUsersLoading(false); }
+  };
+
+  const handleDeleteEvent = async (eventId) => {
+    if (!window.confirm('Xác nhận xóa sự kiện này? Hành động không thể hoàn tác.')) return;
+    setDeletingEventId(eventId);
+    try {
+      await axios.delete(`${API}/events/${eventId}`, { headers: authHeader() });
+      const evRes = await axios.get(`${API}/events`);
+      const evList = evRes.data.data || [];
+      setEvents(evList);
+      if (selectedEventId === eventId) setSelectedEventId(evList[0]?.id || '');
+    } catch (err) { alert(err.response?.data?.message || 'Không thể xóa sự kiện.'); }
+    finally { setDeletingEventId(''); }
+  };
+
+  const handleImageUpload = async (eventId, file) => {
+    if (!file) return;
+    setImageUploading(eventId);
+    try {
+      const formData = new FormData();
+      formData.append('image', file);
+      await axios.patch(`${API}/events/${eventId}/image`, formData, {
+        headers: { ...authHeader(), 'Content-Type': 'multipart/form-data' },
+      });
+      const evRes = await axios.get(`${API}/events`);
+      setEvents(evRes.data.data || []);
+      alert('Upload ảnh thành công!');
+    } catch (err) { alert(err.response?.data?.message || 'Lỗi upload ảnh.'); }
+    finally { setImageUploading(''); }
+  };
+
+  const handleGrantAdmin = async (userId) => {
+    try {
+      await axios.patch(`${API}/users/${userId}/grant-admin`, {}, { headers: authHeader() });
+      fetchUsers();
+    } catch (err) { alert(err.response?.data?.message || 'Lỗi.'); }
+  };
+
+  const handleRevokeAdmin = async (userId) => {
+    try {
+      await axios.patch(`${API}/users/${userId}/revoke-admin`, {}, { headers: authHeader() });
+      fetchUsers();
+    } catch (err) { alert(err.response?.data?.message || 'Lỗi.'); }
+  };
+
+  const handleDeleteUser = async (userId) => {
+    if (!window.confirm('Xác nhận xóa user này?')) return;
+    try {
+      await axios.delete(`${API}/users/${userId}`, { headers: authHeader() });
+      fetchUsers();
+    } catch (err) { alert(err.response?.data?.message || 'Lỗi.'); }
+  };
+
+  useEffect(() => { if (activeView === 'analytics') { fetchAnalytics(); fetchCategoryAnalytics(); } }, [activeView]);
+  useEffect(() => { if (activeView === 'tickets') fetchOrders(); }, [activeView]);
+  useEffect(() => { if (activeView === 'users') fetchUsers(); }, [activeView]);
 
   const handleQueueToggle = async (eventId, turnOn) => {
     setQueueLoading(eventId);
@@ -130,17 +479,45 @@ export default function AdminPage() {
     finally { setQueueLoading(''); }
   };
 
-  const toggleSeatOnGrid = (r, c) => {
-    const g = grid.map(row => [...row]);
-    g[r][c] = g[r][c] ? null : activeZoneId;
-    setGrid(g);
-  };
-
   const updateZoneInfo = (idx, field, val) => {
     const z = [...zones]; z[idx][field] = val; setZones(z);
   };
 
-  const handleCreateEvent = async (e) => {
+  const handleAddCategory = async () => {
+    if (!newCatForm.name.trim()) return;
+    setAddingCat(true);
+    try {
+      const res = await axios.post(`${API}/categories`, {
+        name: newCatForm.name.trim(),
+        description: newCatForm.description.trim() || undefined,
+      }, { headers: authHeader() });
+      let created = res.data.data;
+      if (newCatForm.imageFile) {
+        const fd = new FormData();
+        fd.append('image', newCatForm.imageFile);
+        try {
+          const imgRes = await axios.patch(`${API}/categories/${created.id}/image`, fd, {
+            headers: { ...authHeader(), 'Content-Type': 'multipart/form-data' },
+          });
+          created = imgRes.data.data || created;
+        } catch { /* image upload non-critical */ }
+      }
+      setAllCategories(prev => [...prev, created].sort((a, b) => a.name.localeCompare(b.name)));
+      setNewCatForm({ name: '', description: '', imageFile: null, imagePreview: '' });
+    } catch (err) {
+      alert(err.response?.data?.message || 'Lỗi tạo thể loại');
+    } finally { setAddingCat(false); }
+  };
+
+  const handleDeleteCategory = async (id) => {
+    if (!window.confirm('Xóa thể loại này?')) return;
+    try {
+      await axios.delete(`${API}/categories/${id}`, { headers: authHeader() });
+      setAllCategories(prev => prev.filter(c => c.id !== id));
+    } catch (err) { alert(err.response?.data?.message || 'Lỗi xóa thể loại'); }
+  };
+
+  const handleCreateEvent = async (e, imageFile) => {
     e.preventDefault(); setCreating(true); setCreateMsg({ type: '', text: '' });
     try {
       const isoStartTime = new Date(newEvent.start_time).toISOString();
@@ -152,9 +529,13 @@ export default function AdminPage() {
       }
       const validZones = fz.filter(z => z.seats.length > 0);
       if (validZones.length === 0) { setCreateMsg({ type: 'error', text: 'Bạn chưa vẽ ghế nào trên lưới!' }); return; }
-      const res = await axios.post(`${API}/events`, { title: newEvent.title, description: newEvent.description, location: newEvent.location, start_time: isoStartTime, zones: validZones }, { headers: authHeader() });
+      const res = await axios.post(`${API}/events`, { title: newEvent.title, description: newEvent.description, location: newEvent.location, start_time: isoStartTime, category_id: newEvent.category_id || undefined, zones: validZones }, { headers: authHeader() });
+      if (imageFile) {
+        const fd = new FormData(); fd.append('image', imageFile);
+        try { await axios.patch(`${API}/events/${res.data.data.id}/image`, fd, { headers: { ...authHeader(), 'Content-Type': 'multipart/form-data' } }); } catch { /* non-critical */ }
+      }
       setCreateMsg({ type: 'success', text: res.data.message || 'Tạo sự kiện thành công!' });
-      setNewEvent({ title: '', description: '', location: '', start_time: '' });
+      setNewEvent({ title: '', description: '', location: '', start_time: '', category_id: '' });
       setGrid(Array.from({ length: maxRows }, () => Array(maxCols).fill(null)));
       setShowCreate(false);
       const evRes = await axios.get(`${API}/events`);
@@ -313,7 +694,7 @@ export default function AdminPage() {
 
               {/* Zones info */}
               {ev.zones?.length > 0 && (
-                <div>
+                <div style={{ marginBottom: '1.25rem' }}>
                   <h4 style={{ fontSize: '0.875rem', fontWeight: 600, marginBottom: '0.75rem' }}>Phân khu giá vé</h4>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                     {ev.zones.map((z, i) => (
@@ -329,6 +710,36 @@ export default function AdminPage() {
                   </div>
                 </div>
               )}
+
+              {/* Image upload */}
+              <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border)', borderRadius: 10, padding: '1.125rem', marginBottom: '1.25rem' }}>
+                <div style={{ fontWeight: 600, fontSize: '0.9rem', marginBottom: '0.5rem' }}>Ảnh sự kiện</div>
+                {ev.image_url && (
+                  <img src={ev.image_url} alt="event" style={{ width: '100%', maxHeight: 140, objectFit: 'cover', borderRadius: 8, marginBottom: '0.75rem' }} />
+                )}
+                <label style={{ display: 'inline-block', cursor: 'pointer' }}>
+                  <span className="btn btn-outline" style={{ fontSize: '0.8rem', padding: '0.4rem 0.875rem', pointerEvents: 'none' }}>
+                    {imageUploading === ev.id ? 'Đang upload...' : ev.image_url ? 'Thay ảnh' : 'Upload ảnh'}
+                  </span>
+                  <input
+                    type="file" accept="image/*" style={{ display: 'none' }}
+                    disabled={imageUploading === ev.id}
+                    onChange={e => handleImageUpload(ev.id, e.target.files[0])}
+                  />
+                </label>
+              </div>
+
+              {/* Delete event */}
+              <div style={{ borderTop: '1px solid var(--border)', paddingTop: '1.25rem' }}>
+                <button
+                  className="btn"
+                  style={{ fontSize: '0.8rem', padding: '0.45rem 1rem', background: 'rgba(239,68,68,0.12)', color: 'var(--danger)', border: '1px solid rgba(239,68,68,0.3)' }}
+                  disabled={deletingEventId === ev.id}
+                  onClick={() => handleDeleteEvent(ev.id)}
+                >
+                  {deletingEventId === ev.id ? 'Đang xóa...' : '🗑 Xóa sự kiện'}
+                </button>
+              </div>
             </div>
           );
         })() : (
@@ -359,7 +770,7 @@ export default function AdminPage() {
     const maxSpend = spenders.length > 0 ? Math.max(...spenders.map(s => Number(s.total_spent))) : 1;
 
     return (
-      <div>
+      <>
         <div style={{ marginBottom: '1.75rem', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
           <div>
             <h1 style={{ fontSize: '1.5rem', fontWeight: 800 }}>Phân tích nhân khẩu học</h1>
@@ -445,82 +856,207 @@ export default function AdminPage() {
             )}
           </div>
         </div>
-      </div>
+
+      {/* Category analytics */}
+      {categoryAnalytics && categoryAnalytics.length > 0 && (
+        <div style={{ marginTop: '1.25rem', background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 12, padding: '1.5rem' }}>
+          <h3 style={{ fontSize: '0.95rem', fontWeight: 700, marginBottom: '1.25rem' }}>Phân tích theo danh mục</h3>
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.84rem' }}>
+              <thead>
+                <tr style={{ borderBottom: '1px solid var(--border)' }}>
+                  <th style={{ textAlign: 'left', padding: '0.5rem 0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>Danh mục</th>
+                  <th style={{ textAlign: 'left', padding: '0.5rem 0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>Nhóm tuổi</th>
+                  <th style={{ textAlign: 'left', padding: '0.5rem 0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>Giới tính</th>
+                  <th style={{ textAlign: 'right', padding: '0.5rem 0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>Số lượng</th>
+                </tr>
+              </thead>
+              <tbody>
+                {categoryAnalytics.map((row, i) => (
+                  <tr key={i} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                    <td style={{ padding: '0.5rem 0.75rem', fontWeight: 600 }}>{row.category || '—'}</td>
+                    <td style={{ padding: '0.5rem 0.75rem', color: 'var(--text-secondary)' }}>{row.age_group || '—'}</td>
+                    <td style={{ padding: '0.5rem 0.75rem', color: 'var(--text-secondary)' }}>{row.gender === 'MALE' ? 'Nam' : row.gender === 'FEMALE' ? 'Nữ' : row.gender || '—'}</td>
+                    <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', fontWeight: 700 }}>{(row.count || row._count || 0).toLocaleString()}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+    </>
     );
   };
 
-  /* ─── CREATE EVENT MODAL ─── */
-  const CreateEventModal = () => (
-    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(8px)', zIndex: 200, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '2rem', overflowY: 'auto' }}>
-      <div style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border)', borderRadius: 16, width: '100%', maxWidth: 900, padding: '1.75rem' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-          <h2 style={{ fontSize: '1.2rem', fontWeight: 800 }}>Tạo Sự Kiện Mới</h2>
-          <button className="icon-btn" onClick={() => setShowCreate(false)}>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
-          </button>
+  /* ─── ORDERS VIEW ─── */
+  const OrdersView = () => (
+    <div>
+      <div style={{ marginBottom: '1.75rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div>
+          <h1 style={{ fontSize: '1.5rem', fontWeight: 800 }}>Quản lý Đơn hàng</h1>
+          <p style={{ color: 'var(--text-secondary)', fontSize: '0.875rem' }}>Tất cả đơn đặt vé của hệ thống</p>
         </div>
-
-        {createMsg.text && (
-          <div className={`alert ${createMsg.type === 'success' ? 'alert-success' : 'alert-error'}`} style={{ marginBottom: '1rem' }}>{createMsg.text}</div>
-        )}
-
-        <form onSubmit={handleCreateEvent}>
-          {/* Basic info */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '1rem', marginBottom: '1rem' }}>
-            <div className="form-group" style={{ margin: 0 }}><label className="form-label">Tên sự kiện *</label><input type="text" className="form-input" required value={newEvent.title} onChange={e => setNewEvent({ ...newEvent, title: e.target.value })} /></div>
-            <div className="form-group" style={{ margin: 0 }}><label className="form-label">Thời gian *</label><input type="datetime-local" className="form-input" required value={newEvent.start_time} onChange={e => setNewEvent({ ...newEvent, start_time: e.target.value })} /></div>
-            <div className="form-group" style={{ margin: 0 }}><label className="form-label">Địa điểm *</label><input type="text" className="form-input" required value={newEvent.location} onChange={e => setNewEvent({ ...newEvent, location: e.target.value })} /></div>
-            <div className="form-group" style={{ margin: 0, gridColumn: '1 / -1' }}><label className="form-label">Mô tả</label><input type="text" className="form-input" value={newEvent.description} onChange={e => setNewEvent({ ...newEvent, description: e.target.value })} /></div>
-          </div>
-
-          {/* Zone definition */}
-          <h4 style={{ fontSize: '0.875rem', fontWeight: 600, marginBottom: '0.75rem' }}>1. Định nghĩa phân khu</h4>
-          <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '1.25rem', flexWrap: 'wrap' }}>
-            {zones.map((z, idx) => (
-              <div key={z.id} style={{ background: activeZoneId === z.id ? `${ZONE_COLORS[idx % ZONE_COLORS.length]}18` : 'rgba(255,255,255,0.04)', border: `2px solid ${activeZoneId === z.id ? ZONE_COLORS[idx % ZONE_COLORS.length] : 'transparent'}`, borderRadius: 10, padding: '0.875rem', flex: '1 1 160px', cursor: 'pointer' }} onClick={() => setActiveZoneId(z.id)}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
-                  <div style={{ width: 10, height: 10, borderRadius: '50%', background: ZONE_COLORS[idx % ZONE_COLORS.length] }} />
-                  <span style={{ fontSize: '0.78rem', fontWeight: 600 }}>Zone {idx + 1}</span>
-                  {activeZoneId === z.id && <span className="badge badge-purple" style={{ fontSize: '0.6rem', marginLeft: 'auto' }}>Đang chọn</span>}
-                </div>
-                <input type="text" className="form-input" value={z.name} onChange={e => updateZoneInfo(idx, 'name', e.target.value)} placeholder="Tên khu" style={{ fontSize: '0.8rem', marginBottom: '0.4rem' }} onClick={e => e.stopPropagation()} />
-                <input type="number" className="form-input" value={z.price} onChange={e => updateZoneInfo(idx, 'price', e.target.value)} placeholder="Giá (VNĐ)" style={{ fontSize: '0.8rem' }} onClick={e => e.stopPropagation()} />
-              </div>
-            ))}
-            <button type="button" className="btn btn-outline" style={{ alignSelf: 'center', fontSize: '0.8rem' }} onClick={() => setZones([...zones, { id: Date.now(), name: 'Zone Mới', price: '0' }])}>+ Thêm khu</button>
-          </div>
-
-          {/* Grid designer */}
-          <h4 style={{ fontSize: '0.875rem', fontWeight: 600, marginBottom: '0.4rem' }}>2. Vẽ sơ đồ khán đài</h4>
-          <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginBottom: '0.75rem' }}>Click để tạo ghế. Click lại để xóa (lối đi / sân khấu).</p>
-          <div style={{ overflowX: 'auto', padding: '1rem', background: 'rgba(0,0,0,0.4)', borderRadius: 8, marginBottom: '1rem' }}>
-            {'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('').slice(0, maxRows).map((rowChar, rIndex) => (
-              <div key={rIndex} style={{ display: 'flex', gap: 3, marginBottom: 3, alignItems: 'center' }}>
-                <span style={{ width: 14, fontSize: '9px', color: 'var(--text-muted)', textAlign: 'right', marginRight: 3 }}>{rowChar}</span>
-                {grid[rIndex].map((cellVal, cIndex) => {
-                  const zIdx = zones.findIndex(z => z.id === cellVal);
-                  const bg = cellVal ? (ZONE_COLORS[zIdx % ZONE_COLORS.length] || '#6366f1') : '#1e1e30';
-                  return <div key={cIndex} onMouseDown={() => toggleSeatOnGrid(rIndex, cIndex)} style={{ width: 20, height: 20, cursor: 'pointer', background: bg, borderRadius: 3, flexShrink: 0, transition: 'background 0.08s', border: '1px solid rgba(255,255,255,0.04)' }} title={cellVal ? zones.find(z => z.id === cellVal)?.name : 'Trống'} />;
-                })}
-              </div>
-            ))}
-          </div>
-
-          {/* Zone legend */}
-          <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', marginBottom: '1.25rem' }}>
-            {zones.map((z, idx) => (
-              <div key={z.id} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.78rem' }}>
-                <div style={{ width: 10, height: 10, borderRadius: '50%', background: ZONE_COLORS[idx % ZONE_COLORS.length] }} />
-                {z.name} — {Number(z.price).toLocaleString('vi-VN')}đ
-              </div>
-            ))}
-          </div>
-
-          <button type="submit" className="btn btn-primary" style={{ width: '100%', justifyContent: 'center', padding: '0.875rem', fontSize: '0.95rem' }} disabled={creating}>
-            {creating ? <><span className="spinner" style={{ width: 16, height: 16, borderWidth: 2 }} />Đang lưu...</> : 'Tạo Sự Kiện'}
-          </button>
-        </form>
+        <button className="btn btn-outline" style={{ fontSize: '0.8rem' }} onClick={fetchOrders}>↻ Tải lại</button>
       </div>
+
+      {ordersLoading ? (
+        <div style={{ display: 'flex', justifyContent: 'center', padding: '4rem' }}><div className="spinner" /></div>
+      ) : (
+        <div style={{ display: 'grid', gridTemplateColumns: selectedOrder ? '1fr 380px' : '1fr', gap: '1.25rem' }}>
+          <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 12, overflow: 'hidden' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.84rem' }}>
+              <thead>
+                <tr style={{ borderBottom: '1px solid var(--border)', background: 'rgba(255,255,255,0.02)' }}>
+                  <th style={{ textAlign: 'left', padding: '0.75rem 1rem', color: 'var(--text-muted)', fontWeight: 600 }}>Mã ĐH</th>
+                  <th style={{ textAlign: 'left', padding: '0.75rem 1rem', color: 'var(--text-muted)', fontWeight: 600 }}>Người dùng</th>
+                  <th style={{ textAlign: 'left', padding: '0.75rem 1rem', color: 'var(--text-muted)', fontWeight: 600 }}>Sự kiện</th>
+                  <th style={{ textAlign: 'right', padding: '0.75rem 1rem', color: 'var(--text-muted)', fontWeight: 600 }}>Tổng tiền</th>
+                  <th style={{ textAlign: 'center', padding: '0.75rem 1rem', color: 'var(--text-muted)', fontWeight: 600 }}>Trạng thái</th>
+                  <th style={{ textAlign: 'left', padding: '0.75rem 1rem', color: 'var(--text-muted)', fontWeight: 600 }}>Ngày đặt</th>
+                </tr>
+              </thead>
+              <tbody>
+                {orders.length === 0 ? (
+                  <tr><td colSpan={6} style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)' }}>Không có đơn hàng nào</td></tr>
+                ) : orders.map(order => (
+                  <tr
+                    key={order.id}
+                    onClick={() => { setSelectedOrder(null); fetchOrderDetail(order.id); }}
+                    style={{ borderBottom: '1px solid rgba(255,255,255,0.04)', cursor: 'pointer', transition: 'background 0.1s', background: selectedOrder?.id === order.id ? 'rgba(124,58,237,0.08)' : 'transparent' }}
+                    onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.03)'}
+                    onMouseLeave={e => e.currentTarget.style.background = selectedOrder?.id === order.id ? 'rgba(124,58,237,0.08)' : 'transparent'}
+                  >
+                    <td style={{ padding: '0.75rem 1rem', fontFamily: 'monospace', fontSize: '0.75rem', color: 'var(--text-muted)' }}>#{String(order.id).slice(-6)}</td>
+                    <td style={{ padding: '0.75rem 1rem', fontWeight: 500 }}>{order.user?.full_name || order.user?.email || '—'}</td>
+                    <td style={{ padding: '0.75rem 1rem', overflow: 'hidden', maxWidth: 180, textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{order.event?.title || '—'}</td>
+                    <td style={{ padding: '0.75rem 1rem', textAlign: 'right', fontWeight: 700 }}>{Number(order.total_amount || 0).toLocaleString('vi-VN')}đ</td>
+                    <td style={{ padding: '0.75rem 1rem', textAlign: 'center' }}>
+                      <span className={`badge ${order.status === 'COMPLETED' ? 'badge-green' : order.status === 'PENDING' ? 'badge-yellow' : 'badge-gray'}`}>
+                        {order.status === 'COMPLETED' ? 'Hoàn thành' : order.status === 'PENDING' ? 'Chờ xử lý' : order.status || '—'}
+                      </span>
+                    </td>
+                    <td style={{ padding: '0.75rem 1rem', color: 'var(--text-muted)', fontSize: '0.78rem' }}>
+                      {order.created_at ? new Date(order.created_at).toLocaleDateString('vi-VN') : '—'}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Order detail panel */}
+          {(selectedOrder || orderDetailLoading) && (
+            <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 12, padding: '1.25rem', overflow: 'auto' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                <h3 style={{ fontSize: '0.95rem', fontWeight: 700 }}>Chi tiết đơn hàng</h3>
+                <button className="icon-btn" onClick={() => setSelectedOrder(null)}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+                </button>
+              </div>
+              {orderDetailLoading ? (
+                <div style={{ display: 'flex', justifyContent: 'center', padding: '2rem' }}><div className="spinner" /></div>
+              ) : selectedOrder && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.875rem', fontSize: '0.84rem' }}>
+                  <div><span style={{ color: 'var(--text-muted)' }}>Mã: </span><span style={{ fontFamily: 'monospace' }}>#{String(selectedOrder.id).slice(-8)}</span></div>
+                  <div><span style={{ color: 'var(--text-muted)' }}>Khách: </span><strong>{selectedOrder.user?.full_name || selectedOrder.user?.email || '—'}</strong></div>
+                  <div><span style={{ color: 'var(--text-muted)' }}>Sự kiện: </span>{selectedOrder.event?.title || '—'}</div>
+                  <div><span style={{ color: 'var(--text-muted)' }}>Tổng: </span><strong style={{ color: 'var(--success)' }}>{Number(selectedOrder.total_amount || 0).toLocaleString('vi-VN')}đ</strong></div>
+                  <div>
+                    <span style={{ color: 'var(--text-muted)' }}>Trạng thái: </span>
+                    <span className={`badge ${selectedOrder.status === 'COMPLETED' ? 'badge-green' : selectedOrder.status === 'PENDING' ? 'badge-yellow' : 'badge-gray'}`}>
+                      {selectedOrder.status === 'COMPLETED' ? 'Hoàn thành' : selectedOrder.status === 'PENDING' ? 'Chờ xử lý' : selectedOrder.status}
+                    </span>
+                  </div>
+                  {selectedOrder.tickets?.length > 0 && (
+                    <div>
+                      <div style={{ fontWeight: 600, marginBottom: '0.5rem' }}>Vé ({selectedOrder.tickets.length})</div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
+                        {selectedOrder.tickets.map((t, i) => (
+                          <div key={i} style={{ padding: '0.5rem 0.75rem', background: 'rgba(255,255,255,0.03)', borderRadius: 6, fontSize: '0.78rem' }}>
+                            <span style={{ fontWeight: 600 }}>{t.seat?.zone?.name || '—'}</span>
+                            {' · '}Hàng {t.seat?.row_label} - Ghế {t.seat?.seat_number}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+
+  /* ─── USERS VIEW ─── */
+  const UsersView = () => (
+    <div>
+      <div style={{ marginBottom: '1.75rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div>
+          <h1 style={{ fontSize: '1.5rem', fontWeight: 800 }}>Quản lý Người dùng</h1>
+          <p style={{ color: 'var(--text-secondary)', fontSize: '0.875rem' }}>Danh sách tất cả tài khoản trong hệ thống</p>
+        </div>
+        <button className="btn btn-outline" style={{ fontSize: '0.8rem' }} onClick={fetchUsers}>↻ Tải lại</button>
+      </div>
+
+      {usersLoading ? (
+        <div style={{ display: 'flex', justifyContent: 'center', padding: '4rem' }}><div className="spinner" /></div>
+      ) : (
+        <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 12, overflow: 'hidden' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.84rem' }}>
+            <thead>
+              <tr style={{ borderBottom: '1px solid var(--border)', background: 'rgba(255,255,255,0.02)' }}>
+                <th style={{ textAlign: 'left', padding: '0.75rem 1rem', color: 'var(--text-muted)', fontWeight: 600 }}>Người dùng</th>
+                <th style={{ textAlign: 'left', padding: '0.75rem 1rem', color: 'var(--text-muted)', fontWeight: 600 }}>Email</th>
+                <th style={{ textAlign: 'center', padding: '0.75rem 1rem', color: 'var(--text-muted)', fontWeight: 600 }}>Vai trò</th>
+                <th style={{ textAlign: 'left', padding: '0.75rem 1rem', color: 'var(--text-muted)', fontWeight: 600 }}>Ngày tạo</th>
+                <th style={{ textAlign: 'center', padding: '0.75rem 1rem', color: 'var(--text-muted)', fontWeight: 600 }}>Hành động</th>
+              </tr>
+            </thead>
+            <tbody>
+              {users.length === 0 ? (
+                <tr><td colSpan={5} style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)' }}>Không có người dùng nào</td></tr>
+              ) : users.map(u => (
+                <tr key={u.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                  <td style={{ padding: '0.75rem 1rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      <div style={{ width: 30, height: 30, borderRadius: '50%', background: 'linear-gradient(135deg, #7c3aed, #06b6d4)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.68rem', fontWeight: 700, flexShrink: 0, overflow: 'hidden' }}>
+                        {u.avatar_url ? <img src={u.avatar_url} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="" /> : (u.full_name || u.email || '?').charAt(0).toUpperCase()}
+                      </div>
+                      <span style={{ fontWeight: 500 }}>{u.full_name || '—'}</span>
+                    </div>
+                  </td>
+                  <td style={{ padding: '0.75rem 1rem', color: 'var(--text-secondary)' }}>{u.email}</td>
+                  <td style={{ padding: '0.75rem 1rem', textAlign: 'center' }}>
+                    <span className={`badge ${u.role === 'ADMIN' ? 'badge-purple' : 'badge-gray'}`}>
+                      {u.role === 'ADMIN' ? 'Admin' : 'User'}
+                    </span>
+                  </td>
+                  <td style={{ padding: '0.75rem 1rem', color: 'var(--text-muted)', fontSize: '0.78rem' }}>
+                    {u.created_at ? new Date(u.created_at).toLocaleDateString('vi-VN') : '—'}
+                  </td>
+                  <td style={{ padding: '0.75rem 1rem', textAlign: 'center' }}>
+                    <div style={{ display: 'flex', gap: '0.4rem', justifyContent: 'center', flexWrap: 'wrap' }}>
+                      {u.role === 'ADMIN' ? (
+                        <button className="btn btn-outline" style={{ fontSize: '0.72rem', padding: '0.3rem 0.6rem' }} onClick={() => handleRevokeAdmin(u.id)}>Hạ quyền</button>
+                      ) : (
+                        <button className="btn btn-outline" style={{ fontSize: '0.72rem', padding: '0.3rem 0.6rem' }} onClick={() => handleGrantAdmin(u.id)}>Cấp admin</button>
+                      )}
+                      <button
+                        className="btn"
+                        style={{ fontSize: '0.72rem', padding: '0.3rem 0.6rem', background: 'rgba(239,68,68,0.12)', color: 'var(--danger)', border: '1px solid rgba(239,68,68,0.3)' }}
+                        onClick={() => handleDeleteUser(u.id)}
+                      >Xóa</button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   );
 
@@ -537,8 +1073,9 @@ export default function AdminPage() {
           { key: 'overview', label: 'Tổng quan', icon: icons.overview },
           { key: 'events', label: 'Sự kiện', icon: icons.events },
           { key: 'analytics', label: 'Phân tích', icon: icons.analytics },
-          { key: 'tickets', label: 'Vé đã bán', icon: icons.tickets },
-          { key: 'settings', label: 'Cài đặt', icon: icons.settings },
+          { key: 'tickets', label: 'Đơn hàng', icon: icons.tickets },
+          { key: 'users', label: 'Người dùng', icon: icons.users },
+          { key: 'categories', label: 'Thể loại', icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg> },
         ].map(item => (
           <button
             key={item.key}
@@ -572,15 +1109,34 @@ export default function AdminPage() {
         {activeView === 'overview' && <OverviewView />}
         {activeView === 'events' && <EventsView />}
         {activeView === 'analytics' && <AnalyticsView />}
-        {(activeView === 'tickets' || activeView === 'settings') && (
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '60vh', flexDirection: 'column', gap: '0.75rem', color: 'var(--text-muted)' }}>
-            <div style={{ fontSize: '3rem' }}>{activeView === 'tickets' ? '🎟' : '⚙️'}</div>
-            <p style={{ fontSize: '0.875rem' }}>Tính năng đang được phát triển</p>
-          </div>
+        {activeView === 'tickets' && <OrdersView />}
+        {activeView === 'users' && <UsersView />}
+        {activeView === 'categories' && (
+          <CategoriesView
+            allCategories={allCategories}
+            newCatForm={newCatForm}
+            setNewCatForm={setNewCatForm}
+            addingCat={addingCat}
+            handleAddCategory={handleAddCategory}
+            handleDeleteCategory={handleDeleteCategory}
+          />
         )}
       </div>
 
-      {showCreate && <CreateEventModal />}
+      {showCreate && (
+        <CreateEventModal
+          newEvent={newEvent} setNewEvent={setNewEvent}
+          allCategories={allCategories}
+          zones={zones} setZones={setZones}
+          activeZoneId={activeZoneId} setActiveZoneId={setActiveZoneId}
+          grid={grid} setGrid={setGrid}
+          maxRows={maxRows} maxCols={maxCols}
+          creating={creating} createMsg={createMsg}
+          onSubmit={handleCreateEvent}
+          onClose={() => setShowCreate(false)}
+          updateZoneInfo={updateZoneInfo}
+        />
+      )}
     </div>
   );
 }
