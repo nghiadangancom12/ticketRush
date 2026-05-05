@@ -2,12 +2,9 @@
 const { rateLimit, ipKeyGenerator } = require('express-rate-limit');
 const { RedisStore } = require('rate-limit-redis');
 const redis = require('../config/redis');
+const redisDisabled = process.env.DISABLE_REDIS === 'true';
 
-const joinQueueLimiter = rateLimit({
-  store: new RedisStore({
-    sendCommand: (...args) => redis.call(...args),
-  }),
-  
+const limiterOptions = {
   windowMs: 10 * 1000, 
   max: 3,              
   
@@ -44,6 +41,14 @@ const joinQueueLimiter = rateLimit({
   
   standardHeaders: true,
   legacyHeaders: false,
-});
+};
+
+if (!redisDisabled) {
+  limiterOptions.store = new RedisStore({
+    sendCommand: (...args) => redis.call(...args),
+  });
+}
+
+const joinQueueLimiter = rateLimit(limiterOptions);
 
 module.exports = joinQueueLimiter;

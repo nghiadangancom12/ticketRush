@@ -1,3 +1,4 @@
+require('dotenv').config();
 const Redis = require('ioredis');
 
 // Kiểm tra xem URL có yêu cầu bảo mật SSL/TLS không
