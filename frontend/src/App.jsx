@@ -19,7 +19,8 @@ function Navigation() {
   const avatarUrl = localStorage.getItem('avatarUrl') || '';
   const initials = name ? name.split(' ').map(w => w[0]).filter(Boolean).slice(-2).join('').toUpperCase() : '?';
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    try { await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000/api'}/auth/logout`, { credentials: 'include' }); } catch { /* ignore */ }
     ['token', 'userId', 'userRole', 'userName', 'avatarUrl', 'checkoutEventId'].forEach(k => localStorage.removeItem(k));
     navigate('/auth');
   };

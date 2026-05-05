@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import { QRCodeCanvas } from 'qrcode.react';
 
 const API = 'http://localhost:3000/api';
 const GENDER_LABELS = { MALE: 'Nam', FEMALE: 'Nữ', OTHER: 'Khác' };
@@ -21,8 +22,10 @@ export default function ProfilePage() {
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({});
-  const [avatarInput, setAvatarInput] = useState('');
+  const [avatarFile, setAvatarFile] = useState(null);
+  const [avatarPreview, setAvatarPreview] = useState('');
   const [msg, setMsg] = useState({ type: '', text: '' });
+  const [selectedTicket, setSelectedTicket] = useState(null); // {ticket, order}
 
   const token = localStorage.getItem('token');
 
@@ -35,7 +38,7 @@ export default function ProfilePage() {
       const p = profileRes.data.data;
       setProfile(p);
       setForm({ full_name: p.full_name || '', date_of_birth: p.date_of_birth ? p.date_of_birth.split('T')[0] : '', gender: p.gender || '' });
-      setAvatarInput(p.avatar_url || '');
+      setAvatarPreview(p.avatar_url || '');
       if (p.avatar_url) localStorage.setItem('avatarUrl', p.avatar_url);
       setOrders(histRes.data.data?.orders || []);
       setLockedSeats(histRes.data.data?.lockedSeats || []);
@@ -51,9 +54,21 @@ export default function ProfilePage() {
   const handleSave = async () => {
     setSaving(true); setMsg({ type: '', text: '' });
     try {
-      const res = await axios.patch(`${API}/users/me`, { ...form, avatar_url: avatarInput }, { headers: { Authorization: `Bearer ${token}` } });
+      // 1. Upload avatar file if a new one was selected
+      if (avatarFile) {
+        const formData = new FormData();
+        formData.append('image', avatarFile);
+        const avatarRes = await axios.patch(`${API}/users/me/avatar`, formData, {
+          headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'multipart/form-data' },
+        });
+        const newUrl = avatarRes.data.data?.avatar_url || '';
+        setAvatarPreview(newUrl);
+        localStorage.setItem('avatarUrl', newUrl);
+        setAvatarFile(null);
+      }
+      // 2. Update profile info
+      const res = await axios.patch(`${API}/users/me`, { ...form }, { headers: { Authorization: `Bearer ${token}` } });
       setProfile(res.data.data);
-      localStorage.setItem('avatarUrl', avatarInput);
       localStorage.setItem('userName', form.full_name);
       setEditing(false);
       setMsg({ type: 'success', text: 'Cập nhật thành công!' });
@@ -138,8 +153,16 @@ export default function ProfilePage() {
               </select>
             </div>
             <div className="form-group" style={{ margin: 0, gridColumn: '1 / -1' }}>
-              <label className="form-label">URL ảnh đại diện</label>
-              <input className="form-input" value={avatarInput} onChange={e => setAvatarInput(e.target.value)} placeholder="https://..." />
+              <label className="form-label">Ảnh đại diện</label>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                <Avatar name={form.full_name} url={avatarPreview} size={52} />
+                <input type="file" accept="image/*" className="form-input" style={{ flex: 1 }}
+                  onChange={e => {
+                    const f = e.target.files[0];
+                    if (f) { setAvatarFile(f); setAvatarPreview(URL.createObjectURL(f)); }
+                  }}
+                />
+              </div>
             </div>
           </div>
           <div style={{ marginTop: '1rem', display: 'flex', gap: '0.75rem' }}>
@@ -195,12 +218,16 @@ export default function ProfilePage() {
                   </div>
                 </div>
                 {order.tickets?.length > 0 && (
-                  <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
+                  <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', alignItems: 'center' }}>
                     {order.tickets.map(ticket => (
-                      <span key={ticket.id} style={{ background: 'rgba(99,102,241,0.1)', border: '1px solid rgba(99,102,241,0.2)', borderRadius: 6, padding: '0.2rem 0.5rem', fontSize: '0.75rem', color: 'var(--indigo)' }}>
-                        {ticket.seats?.row_label}{ticket.seats?.seat_number}
-                        {ticket.seats?.zones?.name && <span style={{ opacity: 0.7 }}> · {ticket.seats.zones.name}</span>}
-                      </span>
+                      <button
+                        key={ticket.id}
+                        onClick={() => setSelectedTicket({ ticket, order })}
+                        style={{ background: 'rgba(99,102,241,0.1)', border: '1px solid rgba(99,102,241,0.25)', borderRadius: 6, padding: '0.2rem 0.5rem', fontSize: '0.75rem', color: 'var(--indigo)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.3rem' }}
+                      >
+                        🎫 {ticket.seats?.row_label}{ticket.seats?.seat_number}
+                        {ticket.seats?.zones?.name && <span style={{ opacity: 0.7 }}>· {ticket.seats.zones.name}</span>}
+                      </button>
                     ))}
                   </div>
                 )}
@@ -209,6 +236,132 @@ export default function ProfilePage() {
           </div>
         )}
       </div>
+
+      {/* ── Ticket QR Modal ── */}
+      {selectedTicket && (() => {
+        const { ticket, order } = selectedTicket;
+        const event = ticket.seats?.zones?.events;
+        const zone = ticket.seats?.zones;
+        const eventDate = event?.start_time ? new Date(event.start_time) : null;
+        const dateStr = eventDate ? eventDate.toLocaleDateString('vi-VN', { weekday: 'short', day: '2-digit', month: '2-digit', year: 'numeric' }) : '—';
+        const timeStr = eventDate ? eventDate.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }) : '';
+
+        return (
+          <div
+            onClick={() => setSelectedTicket(null)}
+            style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(8px)', zIndex: 300, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}
+          >
+            <div onClick={e => e.stopPropagation()} style={{ width: '100%', maxWidth: 400 }}>
+              {/* Top part — gradient event info */}
+              <div style={{
+                background: 'linear-gradient(160deg, #0f1729 0%, #1a1035 50%, #0c1a2e 100%)',
+                borderRadius: '20px 20px 0 0',
+                padding: '2rem 1.75rem 1.5rem',
+                position: 'relative',
+                overflow: 'hidden',
+              }}>
+                {/* decorative circles */}
+                <div style={{ position: 'absolute', top: -40, right: -40, width: 160, height: 160, borderRadius: '50%', background: 'rgba(124,58,237,0.15)', filter: 'blur(30px)' }} />
+                <div style={{ position: 'absolute', bottom: -20, left: -20, width: 100, height: 100, borderRadius: '50%', background: 'rgba(6,182,212,0.12)', filter: 'blur(20px)' }} />
+
+                {zone?.name && (
+                  <div style={{ display: 'inline-block', background: 'rgba(124,58,237,0.35)', border: '1px solid rgba(124,58,237,0.5)', borderRadius: 6, padding: '0.2rem 0.6rem', fontSize: '0.7rem', fontWeight: 700, letterSpacing: 1, textTransform: 'uppercase', marginBottom: '0.75rem', color: '#c4b5fd' }}>
+                    {zone.name}
+                  </div>
+                )}
+
+                <h2 style={{ fontSize: '1.35rem', fontWeight: 800, lineHeight: 1.3, marginBottom: '1.25rem', color: '#fff' }}>
+                  {event?.title || 'Sự kiện'}
+                </h2>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.625rem', fontSize: '0.82rem', color: 'rgba(255,255,255,0.75)' }}>
+                    <span style={{ fontSize: '0.9rem', flexShrink: 0, marginTop: 1 }}>🕐</span>
+                    <div>
+                      <div style={{ fontSize: '0.65rem', fontWeight: 600, letterSpacing: 1, color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', marginBottom: 2 }}>Thời gian</div>
+                      {timeStr} · {dateStr}
+                    </div>
+                  </div>
+                  {event?.location && (
+                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.625rem', fontSize: '0.82rem', color: 'rgba(255,255,255,0.75)' }}>
+                      <span style={{ fontSize: '0.9rem', flexShrink: 0, marginTop: 1 }}>📍</span>
+                      <div>
+                        <div style={{ fontSize: '0.65rem', fontWeight: 600, letterSpacing: 1, color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', marginBottom: 2 }}>Địa điểm</div>
+                        {event.location}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Seat info row */}
+                <div style={{ display: 'flex', gap: '2rem', marginTop: '1.5rem', paddingTop: '1.25rem', borderTop: '1px solid rgba(255,255,255,0.1)' }}>
+                  {zone?.name && (
+                    <div>
+                      <div style={{ fontSize: '0.6rem', color: 'rgba(255,255,255,0.4)', fontWeight: 600, letterSpacing: 1, textTransform: 'uppercase', marginBottom: 3 }}>Khu vực</div>
+                      <div style={{ fontSize: '1rem', fontWeight: 800, color: '#fff' }}>{zone.name}</div>
+                    </div>
+                  )}
+                  {ticket.seats?.row_label && (
+                    <div>
+                      <div style={{ fontSize: '0.6rem', color: 'rgba(255,255,255,0.4)', fontWeight: 600, letterSpacing: 1, textTransform: 'uppercase', marginBottom: 3 }}>Hàng</div>
+                      <div style={{ fontSize: '1rem', fontWeight: 800, color: '#fff' }}>{ticket.seats.row_label}</div>
+                    </div>
+                  )}
+                  {ticket.seats?.seat_number && (
+                    <div>
+                      <div style={{ fontSize: '0.6rem', color: 'rgba(255,255,255,0.4)', fontWeight: 600, letterSpacing: 1, textTransform: 'uppercase', marginBottom: 3 }}>Ghế</div>
+                      <div style={{ fontSize: '1rem', fontWeight: 800, color: '#fff' }}>{ticket.seats.seat_number}</div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Tear line */}
+              <div style={{ display: 'flex', alignItems: 'center', position: 'relative', background: '#111827' }}>
+                <div style={{ width: 24, height: 24, borderRadius: '50%', background: 'var(--bg)', flexShrink: 0, marginLeft: -12 }} />
+                <div style={{ flex: 1, borderTop: '2px dashed rgba(255,255,255,0.12)', margin: '0 4px' }} />
+                <div style={{ width: 24, height: 24, borderRadius: '50%', background: 'var(--bg)', flexShrink: 0, marginRight: -12 }} />
+              </div>
+
+              {/* Bottom part — QR code */}
+              <div style={{
+                background: '#111827',
+                borderRadius: '0 0 20px 20px',
+                padding: '1.5rem 1.75rem 1.75rem',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: '0.875rem',
+              }}>
+                <div style={{ background: '#fff', padding: 12, borderRadius: 12 }}>
+                  <QRCodeCanvas
+                    value={ticket.qr_code || ticket.id}
+                    size={160}
+                    level="H"
+                    bgColor="#ffffff"
+                    fgColor="#0f0f0f"
+                  />
+                </div>
+
+                <div style={{ fontFamily: 'monospace', fontSize: '0.875rem', fontWeight: 700, letterSpacing: 2, color: 'rgba(255,255,255,0.85)' }}>
+                  {ticket.qr_code || ticket.id?.slice(0, 16)?.toUpperCase()}
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.75rem', color: 'rgba(255,255,255,0.4)' }}>
+                  <span>☀️</span> Tăng tối đa độ sáng màn hình khi quét
+                </div>
+              </div>
+
+              <button
+                onClick={() => setSelectedTicket(null)}
+                style={{ width: '100%', marginTop: '0.75rem', padding: '0.75rem', background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 12, color: '#fff', fontSize: '0.875rem', cursor: 'pointer' }}
+              >
+                Đóng
+              </button>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }
