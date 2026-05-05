@@ -13,7 +13,13 @@ class CustomerRepository {
       include: {
         tickets: {
           include: {
-            seats: { include: { zones: true } }
+            seats: {
+              include: {
+                zones: {
+                  include: { events: true }
+                }
+              }
+            }
           }
         }
       },

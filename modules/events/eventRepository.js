@@ -4,7 +4,11 @@ class EventRepository {
   async findAllPublished() {
     return prisma.events.findMany({
       where: { status: 'PUBLISHED' },
-      orderBy: { start_time: 'asc' }
+      orderBy: { start_time: 'asc' },
+      include: {
+        categories: true,
+        zones: { select: { id: true, name: true, price: true, total_seats: true } }
+      }
     });
   }
 
@@ -65,4 +69,4 @@ class EventRepository {
   }
 }
 
-module.exports = new EventRepository();
+module.exports = new EventRepository();

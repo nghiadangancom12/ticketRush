@@ -1,7 +1,6 @@
-version: '3.8'
+﻿version: '3.8'
 
 services:
-  # 1. Redis Local (Chạy tẹt ga không lo hết request)
   redis:
     image: redis:7-alpine
     container_name: ticketrush-redis
@@ -9,7 +8,6 @@ services:
     ports:
       - "6379:6379"
 
-  # 2. API Server chính
   api:
     build: .
     container_name: ticketrush-api
@@ -19,13 +17,10 @@ services:
     env_file: 
       - .env
     environment:
-      # Ghi đè URL Redis để các container nói chuyện được với nhau
       - REDIS_URL=redis://redis:6379
-      # KHÔNG ĐIỀN DATABASE_URL Ở ĐÂY ĐỂ NÓ TỰ ĐỘNG LẤY NEON TỪ FILE .ENV
     depends_on:
       - redis
 
-  # 3. Worker xử lý Email
   worker-email:
     build: .
     container_name: ticketrush-worker-email
@@ -38,7 +33,6 @@ services:
     depends_on:
       - redis
 
-  # 4. Worker xử lý Nhả ghế
   worker-seat-release:
     build: .
     container_name: ticketrush-worker-release

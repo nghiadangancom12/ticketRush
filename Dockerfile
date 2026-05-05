@@ -22,7 +22,8 @@ COPY . .
 
 # Bước 7: Generate Prisma Client (CỰC KỲ QUAN TRỌNG)
 # Bước này để Prisma hiểu được Schema của bạn bên trong môi trường Docker
-RUN npx prisma generate
+# Cần dummy DIRECT_URL vì prisma.config.ts đọc env này lúc build (chỉ cần cho generate, không kết nối DB)
+RUN DIRECT_URL="postgresql://dummy:dummy@dummy:5432/dummy" DATABASE_URL="postgresql://dummy:dummy@dummy:5432/dummy" npx prisma generate
 
 # Bước 8: Mở cổng 3000 cho API Server
 EXPOSE 3000
