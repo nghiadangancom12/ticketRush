@@ -1,10 +1,11 @@
 const express = require('express');
 const router = express.Router();
 const adminController = require('./adminController');
-const { verifyToken, isAdmin } = require('../auth/auth.middleware');
+const { verifyToken, isAdmin } = require('../../middlewares/authMiddleware');
 
 // Protected routes (require admin authentication)
 router.get('/dashboard', verifyToken, isAdmin, adminController.getDashboard);
 router.get('/customer-analytics', verifyToken, isAdmin, adminController.getCustomerAnalytics);
+router.get('/category-analytics', verifyToken, isAdmin, adminController.getCategoryAnalytics);
 
 module.exports = router;

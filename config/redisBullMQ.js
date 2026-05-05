@@ -9,8 +9,8 @@ const Redis = require('ioredis');
  * Tách file này ra để không ảnh hưởng đến config Redis chung (dùng cho cache/queue service).
  */
 const redisOptions = {
-  maxRetriesPerRequest: null,
-  tls: process.env.REDIS_URL?.startsWith('rediss://') ? {} : undefined,
+  maxRetriesPerRequest: null,// cho phep retry khi ket noi bi ngat hoac timeout
+  tls: process.env.REDIS_URL?.startsWith('rediss://') ? {} : undefined,// che do bao mat cho uptash
 };
 
 const connection = process.env.REDIS_URL
@@ -19,7 +19,7 @@ const connection = process.env.REDIS_URL
       host: process.env.REDIS_HOST || '127.0.0.1',
       port: Number(process.env.REDIS_PORT) || 6379,
       ...redisOptions,
-    });
+    });// adapt voi local host hoac prodcution
 
 connection.on('connect', () => {
   console.log('🔥 [BullMQ Redis] Đã kết nối Redis thành công!');

@@ -13,8 +13,8 @@ WORKDIR /app
 # nếu bạn không sửa package.json thì lần build sau sẽ cực nhanh.
 COPY package*.json ./
 
-# Bước 5: Cài đặt dependencies
-# --omit=dev giúp bỏ qua các gói test (như Artillery) để container nhẹ hơn khi chạy thật
+# Bước 5: Cài đặt TOÀN BỘ dependencies (Bao gồm cả devDependencies)
+# Bắt buộc phải cài đủ để Bước 7 có công cụ Prisma CLI tiến hành generate
 RUN npm install
 
 # Bước 6: Copy toàn bộ mã nguồn vào container
@@ -30,4 +30,4 @@ EXPOSE 3000
 # Bước 9: Lệnh mặc định để khởi chạy Server
 # Lưu ý: Lệnh này sẽ bị ghi đè bởi "command" trong docker-compose.yml 
 # khi bạn chạy Worker thay vì chạy API.
-CMD ["npm", "start"]
+CMD ["npm", "run", "start:prod"]

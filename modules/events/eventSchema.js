@@ -6,6 +6,7 @@ exports.createEventSchema = z.object({
     description: z.string().optional(),
     start_time: z.string().datetime({ message: 'Thời gian bắt đầu không hợp lệ (Cần chuẩn ISO-8601)' }),
     location: z.string({ required_error: 'Vui lòng nhập địa điểm' }),
+    category_id: z.string().uuid('ID danh mục không hợp lệ').optional(),
     
     // Validate mảng zones
     zones: z.array(

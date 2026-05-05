@@ -23,6 +23,64 @@ class AdminRepository {
     return prisma.users.findUnique({ where: { id: userId } });
   }
 
+  async getDemographicsByAge() {
+    return prisma.$queryRaw`
+      SELECT 
+        c.name AS category_name,
+        CASE 
+          WHEN EXTRACT(YEAR FROM age(CURRENT_DATE, u.date_of_birth)) < 18 THEN '< 18'
+          WHEN EXTRACT(YEAR FROM age(CURRENT_DATE, u.date_of_birth)) BETWEEN 18 AND 24 THEN '18-24'
+          WHEN EXTRACT(YEAR FROM age(CURRENT_DATE, u.date_of_birth)) BETWEEN 25 AND 34 THEN '25-34'
+          WHEN EXTRACT(YEAR FROM age(CURRENT_DATE, u.date_of_birth)) BETWEEN 35 AND 44 THEN '35-44'
+          ELSE '45+'
+        END AS age_group,
+        COUNT(DISTINCT u.id)::int AS user_count
+      FROM categories c
+      JOIN events e ON e.category_id = c.id
+      JOIN orders o ON o.event_id = e.id AND o.status = 'PAID'
+      JOIN users u ON u.id = o.user_id
+      GROUP BY category_name, age_group
+      ORDER BY category_name, age_group
+    `;
+  }
+
+  async getDemographicsByGender() {
+    return prisma.$queryRaw`
+      SELECT 
+        c.name AS category_name,
+        u.gender,
+        COUNT(DISTINCT u.id)::int AS user_count
+      FROM categories c
+      JOIN events e ON e.category_id = c.id
+      JOIN orders o ON o.event_id = e.id AND o.status = 'PAID'
+      JOIN users u ON u.id = o.user_id
+      GROUP BY category_name, u.gender
+      ORDER BY category_name, u.gender
+    `;
+  }
+
+  async getDemographicsByBoth() {
+    return prisma.$queryRaw`
+      SELECT 
+        c.name AS category_name,
+        u.gender,
+        CASE 
+          WHEN EXTRACT(YEAR FROM age(CURRENT_DATE, u.date_of_birth)) < 18 THEN '< 18'
+          WHEN EXTRACT(YEAR FROM age(CURRENT_DATE, u.date_of_birth)) BETWEEN 18 AND 24 THEN '18-24'
+          WHEN EXTRACT(YEAR FROM age(CURRENT_DATE, u.date_of_birth)) BETWEEN 25 AND 34 THEN '25-34'
+          WHEN EXTRACT(YEAR FROM age(CURRENT_DATE, u.date_of_birth)) BETWEEN 35 AND 44 THEN '35-44'
+          ELSE '45+'
+        END AS age_group,
+        COUNT(DISTINCT u.id)::int AS user_count
+      FROM categories c
+      JOIN events e ON e.category_id = c.id
+      JOIN orders o ON o.event_id = e.id AND o.status = 'PAID'
+      JOIN users u ON u.id = o.user_id
+      GROUP BY category_name, u.gender, age_group
+      ORDER BY category_name, u.gender, age_group
+    `;
+  }
+
   async getDashboardStats() {
     const revenue = await prisma.orders.aggregate({
       _sum: { total_amount: true },

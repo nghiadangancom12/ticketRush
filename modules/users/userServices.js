@@ -1,8 +1,41 @@
 const userRepository = require('./usersRepository');
 const AppError = require('../errorHandling/AppError');
+const PrismaApiFeatures = require('../../utils/PrismaApiFeatures');
 
 class UserService {
-   async getProfile(userId) {
+  /**
+   * GET ALL USERS (Admin only)
+   * Hỗ trợ filter, sort, field selection và phân trang qua query string.
+   *
+   * Ví dụ:
+   *   GET /api/users?role=ADMIN&sort=created_at:asc&fields=id,email,role&page=1&limit=20
+   *   GET /api/users?created_at[gte]=2025-01-01&sort=full_name:asc
+   */
+  async getAllUsers(query) {
+    const features = new PrismaApiFeatures(query)
+      .filter()
+      .sort()
+      .limitFields()
+      .paginate();
+
+    const prismaArgs = features.getArgs();
+    const { page, limit } = features.getPagination();
+
+    const { data, total } = await userRepository.findAll(prismaArgs);
+
+    // Loại bỏ password khỏi từng record
+    const safeData = data.map(({ password, ...rest }) => rest);
+
+    return {
+      results: safeData.length,
+      total,
+      page,
+      totalPages: Math.ceil(total / limit),
+      data: safeData,
+    };
+  }
+
+  async getProfile(userId) {
     const user = await userRepository.findById(userId);
     if (!user) throw new AppError('User not found', 404);
     
@@ -60,6 +93,22 @@ class UserService {
     return safeUser;
   }
 
+  /**
+   * Soft Delete User
+   * Thay vì xóa thật, ta set deleted_at = now().
+   * Global filter trong database.js sẽ tự động ẩn user này khỏi mọi query sau đó.
+   */
+  async deleteUser(userId) {
+    const user = await userRepository.findById(userId);
+    if (!user) throw new AppError('User not found', 404);
+
+    // Nếu đã bị soft-deleted trước đó (trường hợp bypass filter)
+    if (user.deleted_at) throw new AppError('User đã bị xóa trước đó', 400);
+
+    await userRepository.softDelete(userId);
+  }
+
 }
 
 module.exports = new UserService();
+
