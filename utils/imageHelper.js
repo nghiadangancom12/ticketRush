@@ -19,6 +19,13 @@ const DEFAULT_CONFIG = {
     outputDir: path.join(process.cwd(), 'public', 'img', 'avatars'),
     format: 'webp',
   },
+  categories: {
+    width: 800,
+    height: 400,
+    quality: 80,
+    outputDir: path.join(process.cwd(), 'public', 'img', 'categories'),
+    format: 'webp',
+  },
 };
 
 // ─── Đảm bảo thư mục lưu trữ tồn tại ───────────────────────────────────────

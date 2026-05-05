@@ -12,6 +12,7 @@ model categories {
   id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   name        String   @unique @db.VarChar(100)
   description String?  @db.VarChar(255)
+  image_url   String?  @db.VarChar(500)
   events      events[]
 }
 

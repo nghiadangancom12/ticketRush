@@ -38,7 +38,7 @@ app.use(cors(corsOptions));
 // 2. Chống dội bom request (Rate Limiting)
 // Giới hạn 100 requests / 15 phút cho cùng 1 IP
 const limiter = rateLimit({
-  max: 100,
+  max: process.env.NODE_ENV === 'production' ? 100 : 2000,
   windowMs: 15 * 60 * 1000,
   message: 'Bạn đã gửi quá nhiều requests từ IP này, vui lòng thử lại sau 15 phút!'
 });
@@ -89,7 +89,8 @@ app.use('/api/Booking',   require('./modules/Booking/BookingRoutes'));
 app.use('/api/orders',    require('./modules/orders/orderRoutes'));
 app.use('/api/queue',     require('./modules/queue/queueRoutes'));
 app.use('/api/customers', require('./modules/customers/customerRoutes'));
-app.use('/api/admin',     require('./modules/admin/AdminRoutes'));
+app.use('/api/admin',      require('./modules/admin/AdminRoutes'));
+app.use('/api/categories', require('./modules/categories/categoriesRoutes'));
 
 // 404 handler
 app.use((req, res, next) => {
