@@ -52,11 +52,28 @@ io.on('connection', (socket) => {
   });
 });
 
-// 👇 3. BƠM KẾT NỐI SOCKET VÀ KHỞI ĐỘNG QUEUE WORKER
+// 👇 3. BƠM KẾT NỐI SOCKET + KHỞI ĐỘNG QUEUE WORKER
 if (queueWorker) {
   queueWorker.setIO(io);
   queueWorker.start();
 }
+
+// Subscribe Redis channel để forward sự kiện nhả ghế từ BullMQ worker → socket.io
+const redisSubscriber = require('./config/redisSubscriber');
+redisSubscriber.subscribe('seatStatusChanged', (err) => {
+  if (err) console.error('[Redis Subscriber] Subscribe thất bại:', err.message);
+  else console.log('🔔 [Redis Subscriber] Đang lắng nghe kênh seatStatusChanged...');
+});
+redisSubscriber.on('message', (channel, message) => {
+  if (channel !== 'seatStatusChanged') return;
+  try {
+    const payload = JSON.parse(message);
+    io.to(`event_${payload.eventId}`).emit('seatStatusChanged', payload);
+    console.log(`[Socket] 📡 Phát seatStatusChanged cho event_${payload.eventId}, ghế: [${payload.seats?.join(', ')}]`);
+  } catch (e) {
+    console.error('[Redis Subscriber] Parse payload thất bại:', e.message);
+  }
+});
 
 // ─── Start Server ──────────────────────────────────────────────────────────
 const PORT = process.env.PORT || 3000;

@@ -909,8 +909,6 @@ export default function AdminPage() {
               <thead>
                 <tr style={{ borderBottom: '1px solid var(--border)', background: 'rgba(255,255,255,0.02)' }}>
                   <th style={{ textAlign: 'left', padding: '0.75rem 1rem', color: 'var(--text-muted)', fontWeight: 600 }}>Mã ĐH</th>
-                  <th style={{ textAlign: 'left', padding: '0.75rem 1rem', color: 'var(--text-muted)', fontWeight: 600 }}>Người dùng</th>
-                  <th style={{ textAlign: 'left', padding: '0.75rem 1rem', color: 'var(--text-muted)', fontWeight: 600 }}>Sự kiện</th>
                   <th style={{ textAlign: 'right', padding: '0.75rem 1rem', color: 'var(--text-muted)', fontWeight: 600 }}>Tổng tiền</th>
                   <th style={{ textAlign: 'center', padding: '0.75rem 1rem', color: 'var(--text-muted)', fontWeight: 600 }}>Trạng thái</th>
                   <th style={{ textAlign: 'left', padding: '0.75rem 1rem', color: 'var(--text-muted)', fontWeight: 600 }}>Ngày đặt</th>
@@ -928,8 +926,6 @@ export default function AdminPage() {
                     onMouseLeave={e => e.currentTarget.style.background = selectedOrder?.id === order.id ? 'rgba(124,58,237,0.08)' : 'transparent'}
                   >
                     <td style={{ padding: '0.75rem 1rem', fontFamily: 'monospace', fontSize: '0.75rem', color: 'var(--text-muted)' }}>#{String(order.id).slice(-6)}</td>
-                    <td style={{ padding: '0.75rem 1rem', fontWeight: 500 }}>{order.user?.full_name || order.user?.email || '—'}</td>
-                    <td style={{ padding: '0.75rem 1rem', overflow: 'hidden', maxWidth: 180, textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{order.event?.title || '—'}</td>
                     <td style={{ padding: '0.75rem 1rem', textAlign: 'right', fontWeight: 700 }}>{Number(order.total_amount || 0).toLocaleString('vi-VN')}đ</td>
                     <td style={{ padding: '0.75rem 1rem', textAlign: 'center' }}>
                       <span className={`badge ${order.status === 'COMPLETED' ? 'badge-green' : order.status === 'PENDING' ? 'badge-yellow' : 'badge-gray'}`}>

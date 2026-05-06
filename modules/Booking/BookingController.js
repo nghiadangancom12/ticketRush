@@ -65,3 +65,26 @@ exports.returnSeats = catchAsync(async (req, res) => {
       : 'Không có ghế nào đang giữ để trả.'
   );
 });
+
+/**
+ * POST /api/Booking/return-seats
+ * Trả một số ghế cụ thể về AVAILABLE (dùng cho auto-hold flow khi bỏ chọn ghế đơn lẻ).
+ */
+exports.returnSpecificSeats = catchAsync(async (req, res) => {
+  const { eventId, seatIds } = req.body;
+  if (!eventId || !Array.isArray(seatIds) || seatIds.length === 0) {
+    return res.status(400).json({ status: 'fail', message: 'eventId và seatIds là bắt buộc.' });
+  }
+  const result = await bookingService.returnSpecificSeats(req.user.id, eventId, seatIds);
+
+  const io = req.app.get('io');
+  if (io && seatIds.length > 0) {
+    io.to(`event_${eventId}`).emit('seatStatusChanged', {
+      eventId,
+      seats: seatIds,
+      status: 'AVAILABLE'
+    });
+  }
+
+  ResponseFactory.success(res, { releasedCount: result.releasedCount }, 'Đã trả ghế thành công.');
+});

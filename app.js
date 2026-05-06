@@ -86,6 +86,7 @@ app.use('/api/auth',      require('./modules/auth/authRoutes'));
 app.use('/api/users',     require('./modules/users/usersRoutes'));
 app.use('/api/events',    require('./modules/events/eventRoutes'));
 app.use('/api/Booking',   require('./modules/Booking/BookingRoutes'));
+app.use('/api/booking',   require('./modules/Booking/BookingRoutes'));
 app.use('/api/orders',    require('./modules/orders/orderRoutes'));
 app.use('/api/queue',     require('./modules/queue/queueRoutes'));
 app.use('/api/customers', require('./modules/customers/customerRoutes'));

@@ -25,6 +25,9 @@ router.post('/checkout', verifyToken, verifyQueueAccess, validate(checkoutSchema
 // 3. API Trả ghế (Hủy giữ chỗ + Giải phóng queue slot cho người tiếp theo)
 router.post('/return', verifyToken, BookingController.returnSeats);
 
+// 4. API Trả một số ghế cụ thể (dùng khi bỏ chọn ghế đơn lẻ trong auto-hold flow)
+router.post('/return-seats', verifyToken, BookingController.returnSpecificSeats);
+
 // 3. API TEST: Dành riêng cho kịch bản bullmq-stress-test.yml (Bỏ qua DB, nhồi thẳng vào Queue)
 router.post('/test-email-stress', async (req, res, next) => {
   try {
