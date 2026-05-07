@@ -43,6 +43,10 @@ class UserService {
     return safeUser;
   }
 
+  async getMyTickets(userId) {
+    return userRepository.getUserTickets(userId);
+  }
+
  async updateProfile(userId, data) {
     // 1. Kiểm tra người dùng có tồn tại không
     const user = await userRepository.findById(userId);

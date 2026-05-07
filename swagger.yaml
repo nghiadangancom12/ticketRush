@@ -24,6 +24,8 @@ tags:
     description: Admin dashboard and analytics
   - name: Queue
     description: Hàng chờ ảo (Virtual Queue) cho sự kiện
+  - name: Categories
+    description: Quản lý danh mục sự kiện (Admin)
 servers:
   - url: http://localhost:3000
     description: Local Development
@@ -417,6 +419,64 @@ paths:
       responses:
         '200':
           description: Cập nhật thành công
+
+  /api/users/me/tickets:
+    get:
+      tags: [Users]
+      summary: Lấy danh sách vé đã mua của tôi
+      description: |
+        Trả về danh sách tất cả các vé của user hiện tại (chỉ lấy vé của những đơn hàng đã thanh toán PAID).
+        Thông tin bao gồm: QR code, mã vé, thông tin ghế, trạng thái check-in, thông tin sự kiện.
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      responses:
+        '200':
+          description: Lấy danh sách thành công
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "success"
+                  message:
+                    type: string
+                    example: "Lấy danh sách vé thành công"
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                          format: uuid
+                        qr_code:
+                          type: string
+                        status:
+                          type: string
+                          enum: [UNUSED, CHECKED_IN, REVOKED]
+                          description: Trạng thái vé
+                        seat_number:
+                          type: integer
+                        row_label:
+                          type: string
+                        event:
+                          type: object
+                          properties:
+                            id:
+                              type: string
+                              format: uuid
+                            title:
+                              type: string
+                            start_time:
+                              type: string
+                              format: date-time
+                            location:
+                              type: string
+        '401':
+          description: Chưa xác thực
 
   /api/users/me/avatar:
     patch:
@@ -1312,3 +1372,237 @@ paths:
                     example: "Phiên giao dịch mất kết nối quá lâu. Vui lòng quay lại hàng chờ."
         '401':
           description: Token không hợp lệ hoặc thiếu
+
+  /api/categories:
+    get:
+      tags: [Categories]
+      summary: Lấy danh sách tất cả danh mục
+      description: |
+        Trả về danh sách danh mục. Hỗ trợ sort, filter và phân trang thông qua PrismaApiFeatures.
+        Ví dụ: `GET /api/categories?sort=name:asc`
+      responses:
+        '200':
+          description: Lấy danh sách thành công
+    post:
+      tags: [Categories]
+      summary: Tạo danh mục mới (Admin only)
+      description: Tạo danh mục mới. Tên danh mục không được trùng lặp.
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - name
+              properties:
+                name:
+                  type: string
+                  example: "Âm nhạc"
+                description:
+                  type: string
+                  example: "Các sự kiện âm nhạc, concert..."
+      responses:
+        '201':
+          description: Tạo thành công
+        '400':
+          description: Tên danh mục đã tồn tại hoặc dữ liệu không hợp lệ
+        '401':
+          description: Chưa xác thực
+        '403':
+          description: Chỉ Admin mới có quyền tạo
+
+  /api/categories/{id}:
+    get:
+      tags: [Categories]
+      summary: Lấy chi tiết danh mục
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Lấy thành công
+        '404':
+          description: Không tìm thấy danh mục
+    patch:
+      tags: [Categories]
+      summary: Cập nhật danh mục (Admin only)
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  example: "Hội thảo"
+                description:
+                  type: string
+                  example: "Sự kiện chuyên đề"
+      responses:
+        '200':
+          description: Cập nhật thành công
+        '400':
+          description: Tên bị trùng
+        '403':
+          description: Chỉ Admin mới có quyền
+        '404':
+          description: Không tìm thấy danh mục
+    delete:
+      tags: [Categories]
+      summary: Xóa danh mục (Admin only)
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Xóa thành công
+        '403':
+          description: Chỉ Admin mới có quyền
+        '404':
+          description: Không tìm thấy danh mục
+
+  /api/categories/{id}/image:
+    patch:
+      tags: [Categories]
+      summary: Upload / cập nhật ảnh danh mục (Admin only)
+      description: |
+        Upload file ảnh cho danh mục. Giới hạn 5MB, định dạng jpeg/png/webp.
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - image
+              properties:
+                image:
+                  type: string
+                  format: binary
+                  description: File ảnh (tối đa 5MB)
+      responses:
+        '200':
+          description: Upload thành công
+        '400':
+          description: File không hợp lệ
+        '403':
+          description: Chỉ Admin mới có quyền
+        '404':
+          description: Không tìm thấy danh mục
+
+  /api/admin/event-analytics:
+    get:
+      tags: [Admin]
+      summary: Lấy thống kê cho một sự kiện cụ thể
+      description: |
+        Trả về các thông tin thống kê của một sự kiện, bao gồm:
+        - Doanh thu (revenue)
+        - Số vé đã bán (ticketsSold)
+        - Số vé chưa bán (ticketsUnsold)
+        - Thông kê giới tính khán giả tham gia (nam, nữ)
+        - Thông kê dải độ tuổi của khán giả tham gia
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      parameters:
+        - in: query
+          name: eventId
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: ID của sự kiện cần xem thống kê
+      responses:
+        '200':
+          description: Thành công
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "success"
+                  data:
+                    type: object
+                    properties:
+                      revenue:
+                        type: number
+                        example: 15000000
+                      ticketsSold:
+                        type: integer
+                        example: 350
+                      ticketsUnsold:
+                        type: integer
+                        example: 150
+                      audienceDemographics:
+                        type: object
+                        properties:
+                          gender:
+                            type: object
+                            properties:
+                              MALE:
+                                type: integer
+                                example: 120
+                              FEMALE:
+                                type: integer
+                                example: 230
+                          ageRanges:
+                            type: object
+                            properties:
+                              "< 18":
+                                type: integer
+                                example: 50
+                              "18-24":
+                                type: integer
+                                example: 150
+                              "25-34":
+                                type: integer
+                                example: 100
+                              "35-44":
+                                type: integer
+                                example: 30
+                              "45+":
+                                type: integer
+                                example: 20
+        '400':
+          description: Thiếu eventId
+        '401':
+          description: Chưa xác thực
+        '403':
+          description: Không có quyền Admin

@@ -7,5 +7,6 @@ const { verifyToken, isAdmin } = require('../../middlewares/authMiddleware');
 router.get('/dashboard', verifyToken, isAdmin, adminController.getDashboard);
 router.get('/customer-analytics', verifyToken, isAdmin, adminController.getCustomerAnalytics);
 router.get('/category-analytics', verifyToken, isAdmin, adminController.getCategoryAnalytics);
+router.get('/event-analytics', verifyToken, isAdmin, adminController.getEventAnalytics);
 
 module.exports = router;

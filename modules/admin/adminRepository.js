@@ -109,6 +109,49 @@ class AdminRepository {
       usersTotal: usersCount
     };
   }
+
+  async getEventAnalytics(eventId) {
+    const revenueQuery = await prisma.orders.aggregate({
+      _sum: { total_amount: true },
+      where: { 
+        event_id: eventId,
+        status: 'PAID' 
+      }
+    });
+
+    const seatStats = await prisma.seats.groupBy({
+      by: ['status'],
+      where: {
+        zones: {
+          event_id: eventId
+        }
+      },
+      _count: true
+    });
+
+    const demographics = await prisma.$queryRaw`
+      SELECT 
+        u.gender,
+        CASE 
+          WHEN EXTRACT(YEAR FROM age(CURRENT_DATE, u.date_of_birth)) < 18 THEN '< 18'
+          WHEN EXTRACT(YEAR FROM age(CURRENT_DATE, u.date_of_birth)) BETWEEN 18 AND 24 THEN '18-24'
+          WHEN EXTRACT(YEAR FROM age(CURRENT_DATE, u.date_of_birth)) BETWEEN 25 AND 34 THEN '25-34'
+          WHEN EXTRACT(YEAR FROM age(CURRENT_DATE, u.date_of_birth)) BETWEEN 35 AND 44 THEN '35-44'
+          ELSE '45+'
+        END AS age_group,
+        COUNT(DISTINCT u.id)::int AS user_count
+      FROM orders o
+      JOIN users u ON u.id = o.user_id
+      WHERE o.event_id = ${eventId}::uuid AND o.status = 'PAID'
+      GROUP BY u.gender, age_group
+    `;
+
+    return {
+      revenue: parseFloat(revenueQuery._sum.total_amount || 0),
+      seatStats,
+      demographics
+    };
+  }
 }
 
 module.exports = new AdminRepository();

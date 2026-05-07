@@ -90,7 +90,7 @@ app.use('/api/orders',    require('./modules/orders/orderRoutes'));
 app.use('/api/queue',     require('./modules/queue/queueRoutes'));
 app.use('/api/customers', require('./modules/customers/customerRoutes'));
 app.use('/api/admin',      require('./modules/admin/AdminRoutes'));
-app.use('/api/categories', require('./modules/categories/categoriesRoutes'));
+app.use('/api/categories', require('./modules/categories/categoryRoutes'));
 
 // 404 handler
 app.use((req, res, next) => {

@@ -17,3 +17,9 @@ exports.getCategoryAnalytics = catchAsync(async (req, res) => {
   const data = await adminService.getCategoryAnalytics(groupBy);
   ResponseFactory.success(res, data);
 });
+
+exports.getEventAnalytics = catchAsync(async (req, res) => {
+  const { eventId } = req.query;
+  const data = await adminService.getEventAnalytics(eventId);
+  ResponseFactory.success(res, data);
+});

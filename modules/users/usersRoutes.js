@@ -14,6 +14,7 @@ router.delete('/:userId', verifyToken, restrictTo('ADMIN'), usersController.dele
 
 // Authenticated user routes
 router.get('/me', verifyToken, usersController.getMe);
+router.get('/me/tickets', verifyToken, usersController.getMyTickets);
 router.patch('/me', verifyToken, validate(usersSchema.updateProfileSchema), usersController.updateProfile);
 
 // PATCH /me/avatar — Upload avatar (multipart/form-data, field name: "image")

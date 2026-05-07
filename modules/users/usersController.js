@@ -33,6 +33,11 @@ exports.getMe = catchAsync(async (req, res) => {
   ResponseFactory.success(res, user);
 }); 
 
+exports.getMyTickets = catchAsync(async (req, res) => {
+  const tickets = await userService.getMyTickets(req.user.id);
+  ResponseFactory.success(res, tickets, 'Lấy danh sách vé thành công');
+});
+
 exports.updateProfile = catchAsync(async (req, res) => {
   const updated = await userService.updateProfile(req.user.id, req.body);
   ResponseFactory.success(res, updated, 'Profile updated successfully');
