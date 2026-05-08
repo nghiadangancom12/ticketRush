@@ -4,3 +4,5 @@ node_modules
 .agents/
 /generated/prisma
 skills-lock.json
+!README.md
+*.md
