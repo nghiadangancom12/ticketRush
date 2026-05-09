@@ -12,7 +12,7 @@ const ZONE_COLORS = ['#6366f1', '#ec4899', '#10b981', '#f59e0b', '#3b82f6', '#ef
 function DonutChart({ data, size = 160 }) {
   const total = data.reduce((s, d) => s + d.value, 0);
   if (total === 0) return <div style={{ width: size, height: size, borderRadius: '50%', background: 'rgba(255,255,255,0.05)' }} />;
-  const r = 55; const cx = size / 2; const cy = size / 2;
+  const r = 40; const cx = size / 2; const cy = size / 2;
   const circumference = 2 * Math.PI * r;
   let cumPct = 0;
   return (
@@ -31,23 +31,19 @@ function DonutChart({ data, size = 160 }) {
           />
         );
       })}
-      <text x={cx} y={cy - 6} textAnchor="middle" fill="white" fontSize="14" fontWeight="800" fontFamily="Inter, sans-serif">
-        {data[0]?.label || ''}
-      </text>
-      <text x={cx} y={cy + 12} textAnchor="middle" fill="#94a3b8" fontSize="9" fontFamily="Inter, sans-serif">LỚN NHẤT</text>
     </svg>
   );
 }
 
 /* ── Bar chart ── */
-function BarChart({ items, max }) {
+function BarChart({ items, max, unit = 'vé' }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.875rem' }}>
       {items.map(item => (
         <div key={item.label}>
           <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.84rem', marginBottom: '0.3rem' }}>
             <span>{item.label}</span>
-            <span style={{ color: 'var(--text-secondary)' }}>{item.value.toLocaleString('vi-VN')} vé</span>
+            <span style={{ color: 'var(--text-secondary)' }}>{item.value.toLocaleString('vi-VN')} {unit}</span>
           </div>
           <div style={{ height: 6, background: 'rgba(255,255,255,0.08)', borderRadius: 3 }}>
             <div style={{ height: '100%', width: `${Math.min(100, (item.value / max) * 100)}%`, background: item.color, borderRadius: 3, transition: 'width 0.6s ease' }} />
@@ -97,22 +93,6 @@ function CategoriesView({ allCategories, newCatForm, setNewCatForm, addingCat, h
           </div>
         </div>
         <div style={{ display: 'flex', alignItems: 'flex-end', gap: '1rem', flexWrap: 'wrap' }}>
-          <div style={{ flex: '1 1 220px' }}>
-            <label className="form-label">Ảnh đại diện (tuỳ chọn)</label>
-            <label style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', cursor: 'pointer' }}>
-              {newCatForm.imagePreview
-                ? <img src={newCatForm.imagePreview} alt="preview" style={{ width: 72, height: 44, objectFit: 'cover', borderRadius: 6, border: '1px solid var(--border)' }} />
-                : <div style={{ width: 72, height: 44, borderRadius: 6, background: 'rgba(255,255,255,0.05)', border: '1px dashed var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.2rem' }}>🖼</div>
-              }
-              <span className="btn btn-outline" style={{ fontSize: '0.78rem', padding: '0.3rem 0.625rem', pointerEvents: 'none' }}>Chọn ảnh</span>
-              <input type="file" accept="image/*" style={{ display: 'none' }}
-                onChange={e => {
-                  const f = e.target.files[0];
-                  if (f) setNewCatForm({ ...newCatForm, imageFile: f, imagePreview: URL.createObjectURL(f) });
-                }}
-              />
-            </label>
-          </div>
           <button className="btn btn-primary" style={{ fontSize: '0.85rem', alignSelf: 'flex-end' }}
             onClick={handleAddCategory} disabled={addingCat || !newCatForm.name.trim()}>
             {addingCat ? 'Đang tạo...' : '+ Thêm thể loại'}
@@ -368,6 +348,123 @@ function CreateEventModal({ newEvent, setNewEvent, allCategories, zones, setZone
   );
 }
 
+function EventStatsModal({ eventTitle, stats, loading, error, onClose }) {
+  const ticketData = stats ? [
+    { label: 'Đã bán', value: stats.ticketsSold, color: '#7c3aed' },
+    { label: 'Chưa bán', value: stats.ticketsUnsold, color: 'rgba(255,255,255,0.12)' },
+  ] : [];
+
+  const genderData = stats ? [
+    { label: 'Nam', value: stats.audienceDemographics?.gender?.MALE ?? 0, color: '#6366f1' },
+    { label: 'Nữ', value: stats.audienceDemographics?.gender?.FEMALE ?? 0, color: '#ec4899' },
+  ].filter(g => g.value > 0) : [];
+
+  const ageRanges = stats?.audienceDemographics?.ageRanges ?? {};
+  const ageItems = Object.entries(ageRanges).map(([label, value]) => ({ label, value, color: '#06b6d4' }));
+  const hasAgeData = ageItems.some(item => item.value > 0);
+  const ageMax = Math.max(...ageItems.map(item => item.value), 1);
+
+  const totalTickets = stats ? stats.ticketsSold + stats.ticketsUnsold : 0;
+  const soldPct = totalTickets > 0 ? Math.round((stats.ticketsSold / totalTickets) * 100) : 0;
+
+  return (
+    <div
+      style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(8px)', zIndex: 300, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2rem' }}
+      onClick={onClose}
+    >
+      <div
+        style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border)', borderRadius: 16, width: '100%', maxWidth: 680, maxHeight: '90vh', overflowY: 'auto', padding: '1.75rem', position: 'relative' }}
+        onClick={e => e.stopPropagation()}
+      >
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.5rem' }}>
+          <div>
+            <h2 style={{ fontSize: '1.1rem', fontWeight: 800, marginBottom: '0.25rem' }}>Thống kê sự kiện</h2>
+            <p style={{ fontSize: '0.84rem', color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 500 }}>{eventTitle}</p>
+          </div>
+          <button className="icon-btn" onClick={onClose} style={{ flexShrink: 0, marginLeft: '1rem' }}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+              <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+            </svg>
+          </button>
+        </div>
+
+        {loading && (
+          <div style={{ display: 'flex', justifyContent: 'center', padding: '4rem 0' }}>
+            <div className="spinner" />
+          </div>
+        )}
+
+        {!loading && error && (
+          <div className="alert alert-error">{error}</div>
+        )}
+
+        {!loading && !error && stats && (
+          <>
+            <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border)', borderRadius: 12, padding: '1.25rem', marginBottom: '1.25rem' }}>
+              <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: 600, marginBottom: '0.375rem' }}>DOANH THU</div>
+              <div style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--success)' }}>
+                {Number(stats.revenue).toLocaleString('vi-VN')}đ
+              </div>
+              <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', marginTop: '0.25rem' }}>
+                {stats.ticketsSold} vé đã bán · Tỷ lệ {soldPct}%
+              </div>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.25rem' }}>
+              <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border)', borderRadius: 12, padding: '1.25rem' }}>
+                <h4 style={{ fontSize: '0.875rem', fontWeight: 600, marginBottom: '1rem' }}>Tình trạng vé</h4>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                  <DonutChart data={ticketData} size={120} />
+                  <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                    {ticketData.map(d => (
+                      <div key={d.label} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '0.84rem' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                          <div style={{ width: 8, height: 8, borderRadius: '50%', background: d.color, flexShrink: 0 }} />
+                          {d.label}
+                        </div>
+                        <span style={{ fontWeight: 700 }}>{d.value}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border)', borderRadius: 12, padding: '1.25rem' }}>
+                <h4 style={{ fontSize: '0.875rem', fontWeight: 600, marginBottom: '1rem' }}>Giới tính</h4>
+                {genderData.length > 0 ? (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                    <DonutChart data={genderData} size={120} />
+                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                      {genderData.map(d => (
+                        <div key={d.label} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '0.84rem' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                            <div style={{ width: 8, height: 8, borderRadius: '50%', background: d.color, flexShrink: 0 }} />
+                            {d.label}
+                          </div>
+                          <span style={{ fontWeight: 700 }}>{d.value}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : (
+                  <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>Chưa có dữ liệu</p>
+                )}
+              </div>
+            </div>
+
+            {hasAgeData && (
+              <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border)', borderRadius: 12, padding: '1.25rem' }}>
+                <h4 style={{ fontSize: '0.875rem', fontWeight: 600, marginBottom: '1rem' }}>Phân bố độ tuổi</h4>
+                <BarChart items={ageItems} max={ageMax} unit="người" />
+              </div>
+            )}
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function AdminPage() {
   const navigate = useNavigate();
   const [activeView, setActiveView] = useState('overview');
@@ -390,6 +487,12 @@ export default function AdminPage() {
   const [queueLoading, setQueueLoading] = useState('');
   const [imageUploading, setImageUploading] = useState('');
   const [deletingEventId, setDeletingEventId] = useState('');
+
+  // Event stats modal state
+  const [statsModalEventId, setStatsModalEventId] = useState(null);
+  const [eventStats, setEventStats] = useState(null);
+  const [statsLoading, setStatsLoading] = useState(false);
+  const [statsError, setStatsError] = useState('');
 
   // Create event form
   const [showCreate, setShowCreate] = useState(false);
@@ -415,7 +518,7 @@ export default function AdminPage() {
           axios.get(`${API}/categories`),
         ]);
         setData(dashRes.data.data);
-        setAllCategories(catsRes.data.data || []);
+        setAllCategories(catsRes.data.data?.data || catsRes.data.data || []);
         const evList = eventsRes.data.data || [];
         setEvents(evList);
         if (evList.length > 0) setSelectedEventId(evList[0].id);
@@ -534,6 +637,27 @@ export default function AdminPage() {
       setQueueToggles(prev => ({ ...prev, [eventId]: turnOn }));
     } catch (err) { alert(err.response?.data?.message || 'Không thể thay đổi trạng thái hàng chờ.'); }
     finally { setQueueLoading(''); }
+  };
+
+  const openEventStats = async (eventId) => {
+    setStatsModalEventId(eventId);
+    setEventStats(null);
+    setStatsError('');
+    setStatsLoading(true);
+    try {
+      const res = await axios.get(`${API}/admin/event-analytics?eventId=${eventId}`, { headers: authHeader() });
+      setEventStats(res.data.data);
+    } catch (err) {
+      setStatsError(err.response?.data?.message || 'Không thể tải thống kê. Vui lòng thử lại.');
+    } finally {
+      setStatsLoading(false);
+    }
+  };
+
+  const closeEventStats = () => {
+    setStatsModalEventId(null);
+    setEventStats(null);
+    setStatsError('');
   };
 
   const updateZoneInfo = (idx, field, val) => {
@@ -804,8 +928,15 @@ export default function AdminPage() {
                 </label>
               </div>
 
-              {/* Delete event */}
-              <div style={{ borderTop: '1px solid var(--border)', paddingTop: '1.25rem' }}>
+              {/* Stats + Delete event */}
+              <div style={{ borderTop: '1px solid var(--border)', paddingTop: '1.25rem', display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                <button
+                  className="btn btn-outline"
+                  style={{ fontSize: '0.8rem', padding: '0.45rem 1rem' }}
+                  onClick={() => openEventStats(ev.id)}
+                >
+                  📊 Xem thống kê
+                </button>
                 <button
                   className="btn"
                   style={{ fontSize: '0.8rem', padding: '0.45rem 1rem', background: 'rgba(239,68,68,0.12)', color: 'var(--danger)', border: '1px solid rgba(239,68,68,0.3)' }}
@@ -830,11 +961,18 @@ export default function AdminPage() {
   const AnalyticsView = () => {
     const genderMap = { MALE: 'Nam', FEMALE: 'Nữ', OTHER: 'Khác' };
     const genderColors = { MALE: '#6366f1', FEMALE: '#ec4899', OTHER: '#94a3b8' };
-    const genderData = (analytics?.genderDemographics || []).map(g => ({
-      label: genderMap[g.gender] || g.gender,
+    const rawGender = (analytics?.genderDemographics || []).map(g => ({
+      label: genderMap[g.gender] || 'Khác',
       value: g._count._all,
-      color: genderColors[g.gender] || '#6b7280',
+      color: genderColors[g.gender] || '#94a3b8',
     }));
+    const genderData = Object.values(
+      rawGender.reduce((acc, g) => {
+        if (acc[g.label]) acc[g.label] = { ...acc[g.label], value: acc[g.label].value + g.value };
+        else acc[g.label] = g;
+        return acc;
+      }, {})
+    );
     const totalGender = genderData.reduce((s, g) => s + g.value, 0);
     const maleCount = analytics?.genderDemographics?.find(g => g.gender === 'MALE')?._count._all || 0;
     const femaleCount = analytics?.genderDemographics?.find(g => g.gender === 'FEMALE')?._count._all || 0;
@@ -949,10 +1087,10 @@ export default function AdminPage() {
               <tbody>
                 {categoryAnalytics.map((row, i) => (
                   <tr key={i} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
-                    <td style={{ padding: '0.5rem 0.75rem', fontWeight: 600 }}>{row.category || '—'}</td>
+                    <td style={{ padding: '0.5rem 0.75rem', fontWeight: 600 }}>{row.category_name || '—'}</td>
                     <td style={{ padding: '0.5rem 0.75rem', color: 'var(--text-secondary)' }}>{row.age_group || '—'}</td>
-                    <td style={{ padding: '0.5rem 0.75rem', color: 'var(--text-secondary)' }}>{row.gender === 'MALE' ? 'Nam' : row.gender === 'FEMALE' ? 'Nữ' : row.gender || '—'}</td>
-                    <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', fontWeight: 700 }}>{(row.count || row._count || 0).toLocaleString()}</td>
+                    <td style={{ padding: '0.5rem 0.75rem', color: 'var(--text-secondary)' }}>{row.gender === 'MALE' ? 'Nam' : row.gender === 'FEMALE' ? 'Nữ' : row.gender || 'Other'}</td>
+                    <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', fontWeight: 700 }}>{Number(row.user_count || 0).toLocaleString()}</td>
                   </tr>
                 ))}
               </tbody>
@@ -1003,8 +1141,8 @@ export default function AdminPage() {
                     <td style={{ padding: '0.75rem 1rem', fontFamily: 'monospace', fontSize: '0.75rem', color: 'var(--text-muted)' }}>#{String(order.id).slice(-6)}</td>
                     <td style={{ padding: '0.75rem 1rem', textAlign: 'right', fontWeight: 700 }}>{Number(order.total_amount || 0).toLocaleString('vi-VN')}đ</td>
                     <td style={{ padding: '0.75rem 1rem', textAlign: 'center' }}>
-                      <span className={`badge ${order.status === 'COMPLETED' ? 'badge-green' : order.status === 'PENDING' ? 'badge-yellow' : 'badge-gray'}`}>
-                        {order.status === 'COMPLETED' ? 'Hoàn thành' : order.status === 'PENDING' ? 'Chờ xử lý' : order.status || '—'}
+                      <span className={`badge ${order.status === 'PAID' ? 'badge-green' : order.status === 'PENDING' ? 'badge-yellow' : 'badge-gray'}`}>
+                        {order.status === 'PAID' ? 'Hoàn thành' : order.status === 'PENDING' ? 'Chờ xử lý' : order.status || '—'}
                       </span>
                     </td>
                     <td style={{ padding: '0.75rem 1rem', color: 'var(--text-muted)', fontSize: '0.78rem' }}>
@@ -1035,8 +1173,8 @@ export default function AdminPage() {
                   <div><span style={{ color: 'var(--text-muted)' }}>Tổng: </span><strong style={{ color: 'var(--success)' }}>{Number(selectedOrder.total_amount || 0).toLocaleString('vi-VN')}đ</strong></div>
                   <div>
                     <span style={{ color: 'var(--text-muted)' }}>Trạng thái: </span>
-                    <span className={`badge ${selectedOrder.status === 'COMPLETED' ? 'badge-green' : selectedOrder.status === 'PENDING' ? 'badge-yellow' : 'badge-gray'}`}>
-                      {selectedOrder.status === 'COMPLETED' ? 'Hoàn thành' : selectedOrder.status === 'PENDING' ? 'Chờ xử lý' : selectedOrder.status}
+                    <span className={`badge ${selectedOrder.status === 'PAID' ? 'badge-green' : selectedOrder.status === 'PENDING' ? 'badge-yellow' : 'badge-gray'}`}>
+                      {selectedOrder.status === 'PAID' ? 'Hoàn thành' : selectedOrder.status === 'PENDING' ? 'Chờ xử lý' : selectedOrder.status}
                     </span>
                   </div>
                   {selectedOrder.tickets?.length > 0 && (
@@ -1208,6 +1346,19 @@ export default function AdminPage() {
           updateZoneInfo={updateZoneInfo}
         />
       )}
+
+      {statsModalEventId && (() => {
+        const ev = events.find(e => e.id === statsModalEventId);
+        return (
+          <EventStatsModal
+            eventTitle={ev?.title || ''}
+            stats={eventStats}
+            loading={statsLoading}
+            error={statsError}
+            onClose={closeEventStats}
+          />
+        );
+      })()}
     </div>
   );
 }
