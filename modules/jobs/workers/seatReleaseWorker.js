@@ -23,12 +23,15 @@ const seatReleaseWorker = new Worker(
 
     console.log(`[BullMQ] ⏳ Đang xử lý job nhả ghế #${job.id} cho user: ${userId}`);
 
-    // Chỉ lấy đúng các ghế đang bị user này giữ để emit realtime chính xác.
+    // Chỉ nhả ghế nếu locked_at >= 58s trước (2s grace).
+    // Ngăn job cũ nhả ghế đã được re-hold bởi cùng user (locked_at đã reset).
+    const cutoff = new Date(Date.now() - 58 * 1000);
     const releasableSeats = await prisma.seats.findMany({
       where: {
         id: { in: seatIds },
         status: 'LOCKED',
         locked_by: userId,
+        locked_at: { lte: cutoff },
       },
       select: { id: true },
     });

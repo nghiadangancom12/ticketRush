@@ -25,7 +25,7 @@ class BookingService {
             // 2. NGHIỆP VỤ: Row-Level Locking để chống Double-booking
             const placeholders = seatIds.map((_, i) => `$${i + 1}::uuid`).join(', ');
             const query = `
-        SELECT id, status FROM "seats"
+        SELECT id, status, locked_by FROM "seats"
         WHERE id IN (${placeholders})
         FOR UPDATE
       `;
@@ -35,7 +35,13 @@ class BookingService {
                 throw new AppError('Một hoặc nhiều ghế không tồn tại hoặc không hợp lệ.', 400);
             }
 
-            const unavailable = lockedSeatsQuery.filter(s => s.status !== 'AVAILABLE');
+            // Allow same user to re-hold their own locked seats (handles StrictMode double-call
+            // and edge cases where user returns to checkout within the 60s window).
+            const unavailable = lockedSeatsQuery.filter(s => {
+                if (s.status === 'AVAILABLE') return false;
+                if (s.status === 'LOCKED' && String(s.locked_by) === String(userId)) return false;
+                return true;
+            });
             if (unavailable.length > 0) {
                 throw new AppError('Một hoặc nhiều ghế đã bị người khác giữ. Vui lòng chọn ghế khác.', 400);
             }

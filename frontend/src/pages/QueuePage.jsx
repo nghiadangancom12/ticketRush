@@ -45,7 +45,9 @@ export default function QueuePage() {
     const d = res.data.data;
     if (d.status === 'allowed' || d.status === 'no_queue') {
       stopPolling(); setStatus('allowed');
-      setTimeout(() => navigate(`/event/${eventId}`), 800);
+      const expireAt = Date.now() + 60 * 1000;
+      localStorage.setItem('seatSelectionExpiry', String(expireAt));
+      setTimeout(() => navigate(`/event/${eventId}`, { state: { expireAt } }), 800);
     } else {
       setStatus('in_queue'); setPosition(d.position);
     }
@@ -74,8 +76,11 @@ export default function QueuePage() {
     socket.on('connect', () => socket.emit('join_queue', localStorage.getItem('userId')));
     socket.on('queue_turn', (data) => {
       stopPolling(); setStatus('allowed');
-      if (data.expireAt) startCountdown(data.expireAt);
-      setTimeout(() => navigate(`/event/${eventId}`), 1200);
+      if (data.expireAt) {
+        startCountdown(data.expireAt);
+        localStorage.setItem('seatSelectionExpiry', String(data.expireAt));
+      }
+      setTimeout(() => navigate(`/event/${eventId}`, { state: { expireAt: data.expireAt } }), 1200);
     });
 
     return () => { socket.disconnect(); stopPolling(); if (countdownRef.current) clearInterval(countdownRef.current); };
@@ -178,7 +183,7 @@ export default function QueuePage() {
 
         {/* Actions */}
         <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'center' }}>
-          <button className="btn btn-primary" onClick={handleManualRefresh} disabled={refreshing} style={{ minWidth: 160 }}>
+          <button className="btn btn-primary" onClick={handleManualRefresh} disabled={refreshing} style={{ minWidth: 160, justifyContent: 'center' }}>
             {refreshing
               ? <><span className="spinner" style={{ width: 14, height: 14, borderWidth: 2 }} />Đang kiểm tra...</>
               : 'Kiểm tra ngay'}

@@ -75,7 +75,6 @@ paths:
               required:
                 - email
                 - password
-                - passwordConfirm
                 - full_name
               properties:
                 email:
@@ -85,12 +84,12 @@ paths:
                 password:
                   type: string
                   minLength: 6
-                  example: "password123"
-                passwordConfirm:
-                  type: string
+                  maxLength: 255
                   example: "password123"
                 full_name:
                   type: string
+                  minLength: 2
+                  maxLength: 100
                   example: "Nguyễn Đỗ Trọng Nghĩa"
                 date_of_birth:
                   type: string
@@ -102,6 +101,44 @@ paths:
       responses:
         '201':
           description: Đăng ký thành công
+          headers:
+            Set-Cookie:
+              schema:
+                type: string
+                example: jwt=eyJhbGc...; HttpOnly; Secure; SameSite=None; Path=/; Max-Age=86400
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "success"
+                  message:
+                    type: string
+                    example: "Đăng ký tài khoản thành công"
+                  data:
+                    type: object
+                    properties:
+                      user:
+                        type: object
+                        properties:
+                          id:
+                            type: string
+                            format: uuid
+                          email:
+                            type: string
+                          full_name:
+                            type: string
+                          role:
+                            type: string
+                            enum: [CUSTOMER]
+                          created_at:
+                            type: string
+                            format: date-time
+                      accessToken:
+                        type: string
+                        description: JWT token để dùng trong Authorization header
         '400':
           description: Lỗi dữ liệu đầu vào (Zod) hoặc Email đã tồn tại
 
@@ -625,9 +662,78 @@ paths:
     get:
       tags: [Events]
       summary: Lấy danh sách tất cả sự kiện
+      description: |
+        Public endpoint. Trả về tất cả sự kiện có `status != DELETED`, kèm đầy đủ zones và seats.
       responses:
         '200':
           description: Lấy danh sách thành công
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "success"
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                          format: uuid
+                        title:
+                          type: string
+                          example: "Lễ hội âm nhạc mùa hè 2025"
+                        description:
+                          type: string
+                        start_time:
+                          type: string
+                          format: date-time
+                        location:
+                          type: string
+                        image_url:
+                          type: string
+                          nullable: true
+                        status:
+                          type: string
+                          enum: [DRAFT, PUBLISHED, CLOSED, DELETED]
+                        category_id:
+                          type: string
+                          format: uuid
+                          nullable: true
+                        zones:
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              id:
+                                type: string
+                                format: uuid
+                              name:
+                                type: string
+                                example: "VIP"
+                              price:
+                                type: number
+                                example: 500000
+                              seats:
+                                type: array
+                                items:
+                                  type: object
+                                  properties:
+                                    id:
+                                      type: string
+                                      format: uuid
+                                    row_label:
+                                      type: string
+                                      example: "A"
+                                    seat_number:
+                                      type: integer
+                                      example: 1
+                                    status:
+                                      type: string
+                                      enum: [AVAILABLE, LOCKED, SOLD]
     post:
       tags: [Events]
       summary: Tạo sự kiện mới (Admin only)
@@ -648,20 +754,112 @@ paths:
               properties:
                 title:
                   type: string
+                  example: "Lễ hội âm nhạc mùa hè 2025"
                 description:
                   type: string
                 start_time:
                   type: string
                   format: date-time
+                  example: "2025-06-01T18:00:00.000Z"
                 location:
                   type: string
+                  example: "Sân vận động Mỹ Đình, Hà Nội"
+                category_id:
+                  type: string
+                  format: uuid
+                  description: ID danh mục sự kiện (optional)
+                  example: "b1c2d3e4-0000-0000-0000-000000000002"
                 zones:
                   type: array
+                  minItems: 1
                   items:
                     type: object
+                    required: [name, price, seats]
+                    properties:
+                      name:
+                        type: string
+                        example: "VIP"
+                      price:
+                        type: number
+                        minimum: 0
+                        example: 500000
+                      seats:
+                        type: array
+                        minItems: 1
+                        items:
+                          type: object
+                          required: [row_label, seat_number]
+                          properties:
+                            row_label:
+                              type: string
+                              example: "A"
+                            seat_number:
+                              type: integer
+                              minimum: 1
+                              example: 1
       responses:
         '201':
           description: Tạo sự kiện thành công
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "success"
+                  message:
+                    type: string
+                    example: "Tạo sự kiện và các khu vực ghế thành công!"
+                  data:
+                    type: object
+                    properties:
+                      event:
+                        type: object
+                        properties:
+                          id:
+                            type: string
+                            format: uuid
+                          title:
+                            type: string
+                          start_time:
+                            type: string
+                            format: date-time
+                          location:
+                            type: string
+                          category_id:
+                            type: string
+                            format: uuid
+                            nullable: true
+                      zones:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            id:
+                              type: string
+                              format: uuid
+                            name:
+                              type: string
+                            price:
+                              type: number
+                            seats:
+                              type: array
+                              items:
+                                type: object
+                                properties:
+                                  id:
+                                    type: string
+                                    format: uuid
+                                  row_label:
+                                    type: string
+                                  seat_number:
+                                    type: integer
+                                  status:
+                                    type: string
+                                    enum: [AVAILABLE]
+        '400':
+          description: Dữ liệu không hợp lệ (Zod validation)
         '403':
           description: Chỉ admin mới có thể tạo sự kiện
 
@@ -669,15 +867,87 @@ paths:
     get:
       tags: [Events]
       summary: Lấy chi tiết sự kiện
+      description: |
+        Yêu cầu xác thực + queue access (verifyQueueAccess middleware).
+        User phải đã được admit vào queue hoặc queue không active.
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
       parameters:
         - name: id
           in: path
           required: true
           schema:
             type: string
+            format: uuid
+          description: ID sự kiện
       responses:
         '200':
           description: Lấy thành công
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "success"
+                  data:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                        format: uuid
+                      title:
+                        type: string
+                      description:
+                        type: string
+                      start_time:
+                        type: string
+                        format: date-time
+                      location:
+                        type: string
+                      image_url:
+                        type: string
+                        nullable: true
+                      status:
+                        type: string
+                        enum: [DRAFT, PUBLISHED, CLOSED]
+                      category_id:
+                        type: string
+                        format: uuid
+                        nullable: true
+                      zones:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            id:
+                              type: string
+                              format: uuid
+                            name:
+                              type: string
+                            price:
+                              type: number
+                            seats:
+                              type: array
+                              items:
+                                type: object
+                                properties:
+                                  id:
+                                    type: string
+                                    format: uuid
+                                  row_label:
+                                    type: string
+                                  seat_number:
+                                    type: integer
+                                  status:
+                                    type: string
+                                    enum: [AVAILABLE, LOCKED, SOLD]
+        '401':
+          description: Chưa xác thực
+        '403':
+          description: Chưa được vào queue (queue đang active nhưng user chưa được admit)
         '404':
           description: Sự kiện không tồn tại
     delete:
@@ -823,9 +1093,12 @@ paths:
     post:
       tags: [Booking]
       summary: Hoàn tất thanh toán
-      description: Xác nhận mua các ghế đã giữ và tạo đơn hàng
+      description: |
+        Xác nhận mua tất cả ghế đang LOCKED của user trong event. Tạo đơn hàng PAID,
+        in vé (tickets), đẩy job gửi email và giải phóng queue slot.
       security:
         - bearerAuth: []
+        - cookieAuth: []
       requestBody:
         required: true
         content:
@@ -837,20 +1110,126 @@ paths:
               properties:
                 eventId:
                   type: string
+                  format: uuid
+                  example: "a1b2c3d4-0000-0000-0000-000000000001"
       responses:
-        '201':
+        '200':
           description: Thanh toán thành công
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "success"
+                  message:
+                    type: string
+                    example: "Thanh toán thành công"
+                  data:
+                    type: object
+                    properties:
+                      order:
+                        type: object
+                        properties:
+                          id:
+                            type: string
+                            format: uuid
+                          status:
+                            type: string
+                            enum: [PAID]
+                          total_amount:
+                            type: number
+                            example: 1000000
+                          created_at:
+                            type: string
+                            format: date-time
+                      seats:
+                        type: array
+                        items:
+                          type: string
+                          format: uuid
+                        description: Danh sách seat ID đã được SOLD
+        '400':
+          description: Không có ghế nào đang LOCKED hoặc ghế đã hết hạn
+        '401':
+          description: Chưa xác thực
 
   /api/customers/purchaseHistory:
     get:
       tags: [Customers]
       summary: Lấy lịch sử mua hàng
-      description: Xem tất cả các đơn hàng và vé đã mua
+      description: |
+        Trả về toàn bộ lịch sử đơn hàng và các ghế đang bị LOCKED (chưa thanh toán) của user hiện tại.
       security:
         - bearerAuth: []
+        - cookieAuth: []
       responses:
         '200':
           description: Lấy lịch sử thành công
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "success"
+                  data:
+                    type: object
+                    properties:
+                      orders:
+                        type: array
+                        description: Danh sách đơn hàng của user
+                        items:
+                          type: object
+                          properties:
+                            id:
+                              type: string
+                              format: uuid
+                            status:
+                              type: string
+                              enum: [PENDING, PAID, CANCELLED]
+                            total_amount:
+                              type: number
+                              example: 500000
+                            created_at:
+                              type: string
+                              format: date-time
+                            tickets:
+                              type: array
+                              items:
+                                type: object
+                                properties:
+                                  id:
+                                    type: string
+                                    format: uuid
+                                  qr_code:
+                                    type: string
+                                  status:
+                                    type: string
+                                    enum: [UNUSED, CHECKED_IN, REVOKED]
+                      lockedSeats:
+                        type: array
+                        description: Ghế đang bị LOCKED bởi user (chờ thanh toán)
+                        items:
+                          type: object
+                          properties:
+                            id:
+                              type: string
+                              format: uuid
+                            row_label:
+                              type: string
+                            seat_number:
+                              type: integer
+                            status:
+                              type: string
+                              enum: [LOCKED]
+                            locked_at:
+                              type: string
+                              format: date-time
+        '401':
+          description: Chưa xác thực
 
   /api/orders:
     get:
@@ -1059,12 +1438,50 @@ paths:
   /api/admin/dashboard:
     get:
       tags: [Admin]
-      summary: Thống kê admin (Admin only)
+      summary: Thống kê tổng quan (Admin only)
+      description: Trả về doanh thu, thống kê ghế và tổng số khách hàng.
       security:
         - bearerAuth: []
+        - cookieAuth: []
       responses:
         '200':
           description: Lấy thống kê thành công
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "success"
+                  data:
+                    type: object
+                    properties:
+                      revenue:
+                        type: number
+                        description: Tổng doanh thu từ các đơn PAID
+                        example: 15000000
+                      seats:
+                        type: object
+                        properties:
+                          total:
+                            type: integer
+                            example: 500
+                          locked:
+                            type: integer
+                            example: 10
+                          sold:
+                            type: integer
+                            example: 350
+                          available:
+                            type: integer
+                            example: 140
+                      usersTotal:
+                        type: integer
+                        description: Tổng số khách hàng (role = CUSTOMER)
+                        example: 250
+        '401':
+          description: Chưa xác thực
         '403':
           description: Chỉ admin mới có thể xem
 
@@ -1072,12 +1489,58 @@ paths:
     get:
       tags: [Admin]
       summary: Phân tích khách hàng (Admin only)
-      description: Thống kê chi tiêu và hành vi khách hàng
+      description: Thống kê nhân khẩu học theo giới tính và top khách hàng chi tiêu nhiều nhất.
       security:
         - bearerAuth: []
+        - cookieAuth: []
       responses:
         '200':
           description: Lấy phân tích thành công
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "success"
+                  data:
+                    type: object
+                    properties:
+                      genderDemographics:
+                        type: array
+                        description: Kết quả groupBy gender từ Prisma
+                        items:
+                          type: object
+                          properties:
+                            gender:
+                              type: string
+                              enum: [MALE, FEMALE, OTHER]
+                              nullable: true
+                            _count:
+                              type: object
+                              properties:
+                                _all:
+                                  type: integer
+                                  example: 120
+                      topSpenders:
+                        type: array
+                        description: Top 5 khách hàng chi tiêu nhiều nhất
+                        items:
+                          type: object
+                          properties:
+                            email:
+                              type: string
+                              example: "user@example.com"
+                            full_name:
+                              type: string
+                              example: "Nguyễn Văn A"
+                            total_spent:
+                              type: number
+                              nullable: true
+                              example: 500000
+        '401':
+          description: Chưa xác thực
         '403':
           description: Chỉ admin mới có thể xem
 
@@ -1188,12 +1651,6 @@ paths:
         - Bấm nút "← Huỷ & Quay Lại Chọn Ghế" trên trang Checkout.
         - Bấm nút "Huỷ" / "Quay lại" ở bất kỳ bước nào trước khi thanh toán xong.
 
-        ### Lưu ý quan trọng cho Frontend
-        > ⚠️ **KHÔNG** gọi API này khi điều hướng từ trang EventDetail sang trang Checkout.
-        > Khi user bấm "Giữ Chỗ & Thanh Toán", frontend cần dùng một **flag nội bộ**
-        > (ví dụ: `isNavigatingToCheckout = true`) để tránh hàm cleanup của component
-        > gọi `/return` nhầm trong lúc React unmount component.
-
         ### Kết quả
         - Ghế về `AVAILABLE`, hiển thị lại trên sơ đồ ghế cho người khác.
         - Slot hàng chờ (queue slot) được giải phóng → Worker sẽ kéo người tiếp theo vào.
@@ -1237,6 +1694,64 @@ paths:
                         description: Số ghế đã được nhả về AVAILABLE
         '401':
           description: Chưa đăng nhập (token không hợp lệ hoặc thiếu)
+
+  /api/Booking/return-seats:
+    post:
+      tags: [Booking]
+      summary: Trả một số ghế cụ thể về AVAILABLE
+      description: |
+        Nhả một danh sách ghế cụ thể (theo `seatIds`) của user về trạng thái `AVAILABLE`.
+        Khác với `/return` (trả tất cả ghế), endpoint này cho phép trả từng ghế riêng lẻ.
+        Chỉ release ghế đang LOCKED bởi chính user gọi API.
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - eventId
+                - seatIds
+              properties:
+                eventId:
+                  type: string
+                  format: uuid
+                  example: "a1b2c3d4-0000-0000-0000-000000000001"
+                  description: ID sự kiện chứa các ghế cần trả
+                seatIds:
+                  type: array
+                  minItems: 1
+                  items:
+                    type: string
+                    format: uuid
+                  example: ["seat-uuid-1", "seat-uuid-2"]
+                  description: Danh sách ID ghế cần trả về AVAILABLE
+      responses:
+        '200':
+          description: Trả ghế thành công
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "success"
+                  message:
+                    type: string
+                    example: "Đã trả ghế thành công."
+                  data:
+                    type: object
+                    properties:
+                      releasedCount:
+                        type: integer
+                        example: 2
+                        description: Số ghế thực sự được nhả (có thể ít hơn seatIds.length nếu một số không phải của user)
+        '401':
+          description: Chưa đăng nhập
 
   /api/queue/{eventId}/heartbeat:
     post:

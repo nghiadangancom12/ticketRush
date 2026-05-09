@@ -6,3 +6,5 @@ node_modules
 skills-lock.json
 !README.md
 *.md
+
+.claude/

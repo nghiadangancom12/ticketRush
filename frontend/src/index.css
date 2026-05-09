@@ -173,8 +173,12 @@ select.form-input option { background: var(--bg-elevated); }
 }
 .seat-circle:hover:not(.s-sold):not(.s-locked) { transform: scale(1.3); filter: brightness(1.25); }
 .s-selected { background: var(--cyan) !important; border-color: var(--cyan) !important; box-shadow: 0 0 8px rgba(6,182,212,0.6); }
-.s-locked { opacity: 0.35; cursor: not-allowed !important; }
+.s-locked { background: rgba(251,146,60,0.15) !important; border-color: rgba(251,146,60,0.65) !important; cursor: not-allowed !important; animation: pulse-lock 1.8s ease-in-out infinite; }
 .s-sold { opacity: 0.3; cursor: not-allowed !important; }
+@keyframes pulse-lock {
+  0%, 100% { opacity: 0.55; }
+  50% { opacity: 1; }
+}
 
 /* Legacy seat compat */
 .seat { width: 28px; height: 28px; border-radius: 4px; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 9px; transition: all 0.15s; border: 1px solid; }

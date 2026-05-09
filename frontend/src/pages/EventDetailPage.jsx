@@ -1,30 +1,30 @@
 import { useState, useEffect, useRef } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import axios from 'axios';
 import { io } from 'socket.io-client';
 
 const API = 'http://localhost:3000/api';
 
-// Colors assigned by zone index
 const ZONE_PALETTE = ['#dc2626', '#6366f1', '#6b7280', '#f59e0b', '#10b981', '#3b82f6'];
 const ZONE_BADGE_CLASSES = ['badge-red', 'badge-purple', 'badge-gray', 'badge-yellow', 'badge-green', 'badge-cyan'];
 
 export default function EventDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const [eventData, setEventData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [notAllowed, setNotAllowed] = useState(false);
   const [selectedSeats, setSelectedSeats] = useState([]);
   const [errorMsg, setErrorMsg] = useState('');
-  const [holdLoading, setHoldLoading] = useState(null); // seatId being held
-  const [holdExpiry, setHoldExpiry] = useState(null); // timestamp when first held seat expires
-  const [countdown, setCountdown] = useState(null); // seconds remaining
+  const [countdown, setCountdown] = useState(null);
 
   const token = localStorage.getItem('token');
-  const isNavigatingToCheckout = useRef(false);
-  const timeoutAlertShownRef = useRef(false);
-  const isReleasingOnTimeoutRef = useRef(false);
+  const heartbeatRef = useRef(null);
+  const countdownRef = useRef(null);
+
+  const expireAt = location.state?.expireAt
+    || (Number(localStorage.getItem('seatSelectionExpiry')) || null);
 
   const fetchEvent = async () => {
     try {
@@ -48,158 +48,81 @@ export default function EventDetailPage() {
     socket.on('seatStatusChanged', (payload) => {
       fetchEvent();
 
-      // Đồng bộ local selection theo trạng thái backend.
-      if ((payload?.status === 'AVAILABLE' || payload?.status === 'SOLD') && Array.isArray(payload?.seats)) {
-        setSelectedSeats((prev) => {
-          const next = prev.filter((s) => !payload.seats.includes(s.id));
-          if (next.length === 0) {
-            setHoldExpiry(null);
+      if (!Array.isArray(payload?.seats)) return;
+
+      if (payload.status === 'AVAILABLE' || payload.status === 'SOLD') {
+        setSelectedSeats(prev => prev.filter(s => !payload.seats.includes(s.id)));
+      } else if (payload.status === 'LOCKED') {
+        // Ghế bị người khác lock trong khi user đang chọn locally → bỏ chọn + báo lỗi
+        setSelectedSeats(prev => {
+          const taken = prev.filter(s => payload.seats.includes(s.id));
+          if (taken.length > 0) {
+            const labels = taken.map(s => `${s.row_label}${s.seat_number}`).join(', ');
+            setErrorMsg(`Ghế ${labels} vừa bị người khác đặt trước. Vui lòng chọn ghế khác.`);
+            return prev.filter(s => !payload.seats.includes(s.id));
           }
-          return next;
+          return prev;
         });
       }
     });
 
-    return () => {
-      socket.disconnect();
-      // Release held seats when leaving page without going to checkout
-      if (!isNavigatingToCheckout.current && token) {
-        fetch(`${API}/Booking/return`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-          body: JSON.stringify({ eventId: id }),
-          keepalive: true,
-        }).catch(() => {});
-      }
-    };
+    return () => socket.disconnect();
   }, [id]);
 
-  // Countdown timer for held seats. When time is up, release on backend then clear local UI.
+  // Heartbeat giữ queue session (TTL Redis = 20s → ping mỗi 15s)
   useEffect(() => {
-    if (!holdExpiry) {
-      setCountdown(null);
-      timeoutAlertShownRef.current = false;
-      isReleasingOnTimeoutRef.current = false;
-      return;
-    }
-
-    const tick = () => {
-      const left = Math.max(0, Math.ceil((holdExpiry - Date.now()) / 1000));
-      setCountdown(left);
-
-      if (left === 0 && !timeoutAlertShownRef.current && !isReleasingOnTimeoutRef.current) {
-        timeoutAlertShownRef.current = true;
-        isReleasingOnTimeoutRef.current = true;
-
-        axios.post(`${API}/Booking/return`,
-          { eventId: id },
-          { headers: { Authorization: `Bearer ${token}` } }
-        ).catch(() => {
-          // Nếu lỗi mạng, BullMQ vẫn tự nhả ghế theo timeout đã schedule.
-        }).finally(() => {
-          setSelectedSeats([]);
-          setHoldExpiry(null);
-          setErrorMsg('');
-          fetchEvent();
-          isReleasingOnTimeoutRef.current = false;
-          window.alert('Đã hết 60 giây giữ chỗ. Vui lòng chọn lại ghế.');
+    if (!token) return;
+    const ping = () =>
+      axios.post(`${API}/queue/${id}/heartbeat`, {}, { headers: { Authorization: `Bearer ${token}` } })
+        .catch(err => {
+          if (err.response?.status === 410) {
+            clearInterval(heartbeatRef.current);
+            navigate(`/event/${id}/queue`);
+          }
         });
+    ping();
+    heartbeatRef.current = setInterval(ping, 15000);
+    return () => clearInterval(heartbeatRef.current);
+  }, [id, token]);
+
+  // Đếm ngược thời gian chọn ghế (60s từ khi được vào queue)
+  useEffect(() => {
+    if (!expireAt) return;
+    const tick = () => {
+      const left = Math.max(0, Math.ceil((expireAt - Date.now()) / 1000));
+      setCountdown(left);
+      if (left === 0) {
+        clearInterval(countdownRef.current);
+        localStorage.removeItem('seatSelectionExpiry');
+        navigate(`/event/${id}/queue`);
       }
     };
-
     tick();
-    const timer = setInterval(tick, 1000);
-    return () => clearInterval(timer);
-  }, [holdExpiry, id, token]);
+    countdownRef.current = setInterval(tick, 1000);
+    return () => clearInterval(countdownRef.current);
+  }, [expireAt]);
 
-  // Auto-hold: click seat → immediately call /Booking/hold for that single seat
-  const toggleSeat = async (seat, zone) => {
-    const alreadySelected = selectedSeats.find(s => s.id === seat.id);
-    if (holdLoading) return;
+  // Chọn / bỏ chọn ghế — chỉ cập nhật local state, không gọi API
+  const toggleSeat = (seat, zone) => {
+    const alreadySelected = selectedSeats.some(s => s.id === seat.id);
     if (!alreadySelected && seat.status !== 'AVAILABLE') return;
 
     if (alreadySelected) {
-      setHoldLoading(seat.id);
-      const remainingSeats = selectedSeats.filter(s => s.id !== seat.id);
-      // Deselect: release just this seat
-      try {
-        await axios.post(`${API}/Booking/return-seats`,
-          { eventId: id, seatIds: [seat.id] },
-          { headers: { Authorization: `Bearer ${token}` } }
-        );
-      } catch (err) {
-        // Backward compatibility: nếu backend cũ chưa có /return-seats,
-        // dùng /return rồi giữ lại các ghế còn lại.
-        if (err.response?.status === 404) {
-          await axios.post(`${API}/Booking/return`,
-            { eventId: id },
-            { headers: { Authorization: `Bearer ${token}` } }
-          );
-
-          if (remainingSeats.length > 0) {
-            await axios.post(`${API}/Booking/hold`,
-              { eventId: id, seatIds: remainingSeats.map(s => s.id) },
-              { headers: { Authorization: `Bearer ${token}` } }
-            );
-          }
-        } else {
-          throw err;
-        }
-      }
-
-      try {
-        // Update local seat state immediately so user can reselect right away.
-        setEventData(prev => {
-          if (!prev?.zones) return prev;
-          return {
-            ...prev,
-            zones: prev.zones.map(z => ({
-              ...z,
-              seats: z.seats?.map(s => s.id === seat.id
-                ? { ...s, status: 'AVAILABLE', locked_by: null, locked_at: null }
-                : s),
-            })),
-          };
-        });
-
-        setSelectedSeats(prev => {
-          const next = prev.filter(s => s.id !== seat.id);
-          if (next.length === 0) setHoldExpiry(null);
-          return next;
-        });
-        setErrorMsg('');
-      } catch (err) {
-        setErrorMsg(err.response?.data?.message || 'Hủy giữ chỗ thất bại. Vui lòng thử lại.');
-        fetchEvent();
-      } finally {
-        setHoldLoading(null);
-      }
+      setSelectedSeats(prev => prev.filter(s => s.id !== seat.id));
+      setErrorMsg('');
     } else {
       if (selectedSeats.length >= 4) { setErrorMsg('Bạn chỉ được chọn tối đa 4 ghế!'); return; }
-      setHoldLoading(seat.id);
+      setSelectedSeats(prev => [...prev, { ...seat, zoneName: zone.name, price: zone.price }]);
       setErrorMsg('');
-      try {
-        await axios.post(`${API}/Booking/hold`,
-          { seatIds: [seat.id], eventId: id },
-          { headers: { Authorization: `Bearer ${token}` } }
-        );
-        const enriched = { ...seat, zoneName: zone.name, price: zone.price };
-        setSelectedSeats(prev => [...prev, enriched]);
-        // Set expiry only on first held seat
-        setHoldExpiry(prev => prev ?? Date.now() + 60 * 1000);
-      } catch (err) {
-        setErrorMsg(err.response?.data?.message || 'Ghế này đã được người khác giữ. Vui lòng chọn ghế khác.');
-        fetchEvent();
-      } finally {
-        setHoldLoading(null);
-      }
     }
   };
 
   const handleCheckout = () => {
+    if (selectedSeats.length === 0) return;
+    clearInterval(countdownRef.current);
+    localStorage.removeItem('seatSelectionExpiry');
     localStorage.setItem('checkoutEventId', id);
-    isNavigatingToCheckout.current = true;
-    navigate('/checkout');
+    navigate('/checkout', { state: { eventId: id, seats: selectedSeats } });
   };
 
   /* ── Not allowed ── */
@@ -238,7 +161,6 @@ export default function EventDetailPage() {
 
         {/* ── Left: Event Info ── */}
         <div style={{ position: 'sticky', top: '1.5rem' }}>
-          {/* Cover */}
           <div style={{
             borderRadius: 16, overflow: 'hidden', marginBottom: '1rem',
             background: 'linear-gradient(135deg, #1e1b4b, #312e81)',
@@ -251,7 +173,6 @@ export default function EventDetailPage() {
             )}
           </div>
 
-          {/* Info card */}
           <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 16, padding: '1.25rem' }}>
             <span className="badge badge-purple" style={{ marginBottom: '0.625rem' }}>ÂM NHẠC</span>
             <h2 style={{ fontSize: '1.25rem', fontWeight: 800, marginBottom: '0.875rem', lineHeight: 1.3 }}>{eventData.title}</h2>
@@ -287,12 +208,36 @@ export default function EventDetailPage() {
           <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 16, padding: '1.5rem' }}>
             <h3 style={{ fontSize: '1.1rem', fontWeight: 700, marginBottom: '1.25rem' }}>Sơ Đồ Chỗ Ngồi</h3>
 
+            {/* Countdown banner */}
+            {countdown !== null && (
+              <div style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                background: countdown <= 15 ? 'rgba(239,68,68,0.1)' : 'rgba(245,158,11,0.08)',
+                border: `1px solid ${countdown <= 15 ? 'rgba(239,68,68,0.2)' : 'rgba(245,158,11,0.15)'}`,
+                borderRadius: 8, padding: '0.75rem 1rem', marginBottom: '1.25rem',
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.84rem', color: 'var(--text-secondary)' }}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={countdown <= 15 ? '#ef4444' : 'var(--warning)'} strokeWidth="2">
+                    <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+                  </svg>
+                  Thời gian chọn ghế còn lại
+                </div>
+                <span style={{
+                  fontWeight: 800, fontSize: '1.05rem', fontVariantNumeric: 'tabular-nums',
+                  color: countdown <= 15 ? '#ef4444' : 'var(--warning)',
+                }}>
+                  {countdown}s
+                </span>
+              </div>
+            )}
+
             {/* Legend */}
             <div style={{ display: 'flex', gap: '1.25rem', marginBottom: '1rem', fontSize: '0.8rem', color: 'var(--text-secondary)', flexWrap: 'wrap' }}>
               {[
-                { cls: '', label: 'Trống', style: { width: 14, height: 14, borderRadius: '50%', border: '2px solid #94a3b8', background: 'transparent', display: 'inline-block' } },
-                { cls: 's-selected', label: 'Đang chọn', style: { width: 14, height: 14, borderRadius: '50%', background: 'var(--cyan)', border: '2px solid var(--cyan)', display: 'inline-block' } },
-                { cls: '', label: 'Đã bán', style: { width: 14, height: 14, borderRadius: '50%', background: 'rgba(55,65,81,0.8)', border: '2px solid rgba(55,65,81,0.8)', opacity: 0.4, display: 'inline-block' } },
+                { label: 'Trống', style: { width: 14, height: 14, borderRadius: '50%', border: '2px solid #94a3b8', background: 'transparent', display: 'inline-block' } },
+                { label: 'Đang chọn', style: { width: 14, height: 14, borderRadius: '50%', background: 'var(--cyan)', border: '2px solid var(--cyan)', display: 'inline-block' } },
+                { label: 'Đang được giữ', style: { width: 14, height: 14, borderRadius: '50%', background: 'rgba(251,146,60,0.15)', border: '2px solid rgba(251,146,60,0.65)', display: 'inline-block' } },
+                { label: 'Đã bán', style: { width: 14, height: 14, borderRadius: '50%', background: 'rgba(55,65,81,0.8)', border: '2px solid rgba(55,65,81,0.8)', opacity: 0.4, display: 'inline-block' } },
               ].map(({ label, style }) => (
                 <div key={label} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
                   <span style={style} />
@@ -348,17 +293,12 @@ export default function EventDetailPage() {
                             const seat = seats.find(s => s.seat_number === cIdx + 1);
                             if (!seat) return <div key={cIdx} style={{ width: 20, height: 20, flexShrink: 0 }} />;
                             const isSelected = selectedSeats.some(s => s.id === seat.id);
-                            const isBeingHeld = holdLoading === seat.id;
                             let extraCls = '';
                             let bgStyle = {};
-                            if (isBeingHeld) {
-                              extraCls = 's-loading';
-                              bgStyle = { background: 'rgba(251,191,36,0.4)', borderColor: '#fbbf24', cursor: 'wait' };
-                            } else if (isSelected) {
+                            if (isSelected) {
                               extraCls = 's-selected';
                             } else if (seat.status === 'LOCKED') {
                               extraCls = 's-locked';
-                              bgStyle = { background: 'rgba(107,114,128,0.5)', borderColor: 'rgba(107,114,128,0.5)' };
                             } else if (seat.status === 'SOLD') {
                               extraCls = 's-sold';
                               bgStyle = { background: 'rgba(55,65,81,0.7)', borderColor: 'rgba(55,65,81,0.7)' };
@@ -371,7 +311,13 @@ export default function EventDetailPage() {
                                 className={`seat-circle ${extraCls}`}
                                 style={bgStyle}
                                 onClick={() => toggleSeat(seat, zone)}
-                                title={`${zone.name} — ${rowLabel}${seat.seat_number} — ${Number(zone.price).toLocaleString('vi-VN')}đ`}
+                                title={
+                                  seat.status === 'LOCKED'
+                                    ? `${zone.name} — ${rowLabel}${seat.seat_number} — Đang được giữ`
+                                    : seat.status === 'SOLD'
+                                    ? `${zone.name} — ${rowLabel}${seat.seat_number} — Đã bán`
+                                    : `${zone.name} — ${rowLabel}${seat.seat_number} — ${Number(zone.price).toLocaleString('vi-VN')}đ`
+                                }
                               />
                             );
                           })}
@@ -401,21 +347,13 @@ export default function EventDetailPage() {
             </div>
             <div>
               <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>
-                Đã giữ: {selectedSeats.map(s => `${s.zoneName}-${s.row_label}${s.seat_number}`).join(', ')}
+                Đã chọn: {selectedSeats.map(s => `${s.zoneName}-${s.row_label}${s.seat_number}`).join(', ')}
               </div>
               <div style={{ fontWeight: 700, fontSize: '1rem' }}>
                 {totalSelected.toLocaleString('vi-VN')}đ
                 <span style={{ fontWeight: 400, fontSize: '0.8rem', color: 'var(--text-secondary)', marginLeft: '0.4rem' }}>
                   ({selectedSeats.length} vé)
                 </span>
-                {countdown !== null && (
-                  <span style={{
-                    marginLeft: '0.75rem', fontSize: '0.8rem', fontWeight: 700,
-                    color: countdown <= 15 ? '#ef4444' : '#f59e0b',
-                  }}>
-                    ⏱ {countdown}s
-                  </span>
-                )}
               </div>
             </div>
           </div>
