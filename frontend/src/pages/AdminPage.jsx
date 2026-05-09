@@ -144,11 +144,24 @@ function CategoriesView({ allCategories, newCatForm, setNewCatForm, addingCat, h
 }
 
 /* ─── MODULE-LEVEL: CreateEventModal (stable ref → no focus loss) ─── */
-function CreateEventModal({ newEvent, setNewEvent, allCategories, zones, setZones, activeZoneId, setActiveZoneId, grid, setGrid, maxRows, maxCols, creating, createMsg, onSubmit, onClose, updateZoneInfo }) {
+function getRowLabel(i) {
+  // 0→A, 1→B, …, 25→Z, 26→AA, 27→AB, …
+  let label = '';
+  let n = i;
+  do {
+    label = String.fromCharCode(65 + (n % 26)) + label;
+    n = Math.floor(n / 26) - 1;
+  } while (n >= 0);
+  return label;
+}
+
+function CreateEventModal({ newEvent, setNewEvent, allCategories, zones, setZones, activeZoneId, setActiveZoneId, grid, setGrid, maxRows, maxCols, onResizeGrid, creating, createMsg, onSubmit, onClose, updateZoneInfo }) {
   const [seatEraseMode, setSeatEraseMode] = useState(false);
   const [seatDrag, setSeatDrag] = useState(null);
   const [imageFile, setImageFile] = useState(null);
   const [imagePreview, setImagePreview] = useState('');
+  const [rowInput, setRowInput] = useState(String(maxRows));
+  const [colInput, setColInput] = useState(String(maxCols));
 
   // Refs to avoid stale closures in mouse event handlers
   const isDraggingRef = useRef(false);
@@ -253,6 +266,44 @@ function CreateEventModal({ newEvent, setNewEvent, allCategories, zones, setZone
           </div>
 
           {/* Drag seat grid */}
+          {/* Grid size controls */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem', marginBottom: '0.75rem', padding: '0.625rem 0.875rem', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border)', borderRadius: 8 }}>
+            <span style={{ fontSize: '0.8rem', fontWeight: 600, whiteSpace: 'nowrap' }}>Kích thước bảng:</span>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.8rem' }}>
+              <span style={{ color: 'var(--text-secondary)' }}>Hàng</span>
+              <input
+                type="number"
+                value={rowInput}
+                onChange={e => {
+                  setRowInput(e.target.value);
+                  const n = parseInt(e.target.value, 10);
+                  if (!isNaN(n) && n > 0) onResizeGrid(n, maxCols);
+                }}
+                onBlur={() => setRowInput(String(maxRows))}
+                style={{ width: 80, textAlign: 'center' }}
+                className="form-input"
+              />
+            </label>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.8rem' }}>
+              <span style={{ color: 'var(--text-secondary)' }}>Cột</span>
+              <input
+                type="number"
+                value={colInput}
+                onChange={e => {
+                  setColInput(e.target.value);
+                  const n = parseInt(e.target.value, 10);
+                  if (!isNaN(n) && n > 0) onResizeGrid(maxRows, n);
+                }}
+                onBlur={() => setColInput(String(maxCols))}
+                style={{ width: 80, textAlign: 'center' }}
+                className="form-input"
+              />
+            </label>
+            <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginLeft: 'auto' }}>
+              {maxRows} × {maxCols} = tối đa {maxRows * maxCols} ghế
+            </span>
+          </div>
+
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.4rem' }}>
             <h4 style={{ fontSize: '0.875rem', fontWeight: 600 }}>2. Vẽ sơ đồ khán đài</h4>
             <div style={{ display: 'flex', gap: '0.5rem' }}>
@@ -268,13 +319,13 @@ function CreateEventModal({ newEvent, setNewEvent, allCategories, zones, setZone
             Kéo để tô vùng ghế (m×n). Nhả chuột để xác nhận. Chuyển sang chế độ xóa để tẩy.
           </p>
           <div
-            style={{ overflowX: 'auto', padding: '1rem', background: 'rgba(0,0,0,0.4)', borderRadius: 8, marginBottom: '1rem', userSelect: 'none', cursor: 'crosshair' }}
+            style={{ overflowX: 'auto', overflowY: 'auto', maxHeight: '55vh', padding: '1rem', background: 'rgba(0,0,0,0.4)', borderRadius: 8, marginBottom: '1rem', userSelect: 'none', cursor: 'crosshair' }}
             onMouseUp={handleMouseUp}
             onMouseLeave={handleMouseUp}
           >
-            {'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('').slice(0, maxRows).map((rowChar, rIndex) => (
+            {Array.from({ length: maxRows }, (_, rIndex) => (
               <div key={rIndex} style={{ display: 'flex', gap: 3, marginBottom: 3, alignItems: 'center' }}>
-                <span style={{ width: 14, fontSize: '9px', color: 'var(--text-muted)', textAlign: 'right', marginRight: 3, flexShrink: 0 }}>{rowChar}</span>
+                <span style={{ width: 24, fontSize: '9px', color: 'var(--text-muted)', textAlign: 'right', marginRight: 3, flexShrink: 0 }}>{getRowLabel(rIndex)}</span>
                 {grid[rIndex].map((cellVal, cIndex) => {
                   const inSel = seatDrag &&
                     rIndex >= Math.min(seatDrag.r0, seatDrag.r1) && rIndex <= Math.max(seatDrag.r0, seatDrag.r1) &&
@@ -348,8 +399,9 @@ export default function AdminPage() {
   const [addingCat, setAddingCat] = useState(false);
   const [zones, setZones] = useState([{ id: 1, name: 'VIP', price: '2500000' }, { id: 2, name: 'GA A', price: '1500000' }, { id: 3, name: 'GA B', price: '900000' }]);
   const [activeZoneId, setActiveZoneId] = useState(1);
-  const maxRows = 15; const maxCols = 30;
-  const [grid, setGrid] = useState(Array.from({ length: maxRows }, () => Array(maxCols).fill(null)));
+  const [maxRows, setMaxRows] = useState(15);
+  const [maxCols, setMaxCols] = useState(30);
+  const [grid, setGrid] = useState(Array.from({ length: 15 }, () => Array(30).fill(null)));
   const [creating, setCreating] = useState(false);
   const [createMsg, setCreateMsg] = useState({ type: '', text: '' });
 
@@ -428,7 +480,8 @@ export default function AdminPage() {
     finally { setDeletingEventId(''); }
   };
 
-  const handleImageUpload = async (eventId, file) => {
+  const handleImageUpload = async (eventId, file, options = {}) => {
+    const { silent = false } = options;
     if (!file) return;
     setImageUploading(eventId);
     try {
@@ -439,8 +492,12 @@ export default function AdminPage() {
       });
       const evRes = await axios.get(`${API}/events`);
       setEvents(evRes.data.data || []);
-      alert('Upload ảnh thành công!');
-    } catch (err) { alert(err.response?.data?.message || 'Lỗi upload ảnh.'); }
+      if (!silent) alert('Upload ảnh thành công!');
+      return true;
+    } catch (err) {
+      if (!silent) alert(err.response?.data?.message || 'Lỗi upload ảnh.');
+      return false;
+    }
     finally { setImageUploading(''); }
   };
 
@@ -481,6 +538,19 @@ export default function AdminPage() {
 
   const updateZoneInfo = (idx, field, val) => {
     const z = [...zones]; z[idx][field] = val; setZones(z);
+  };
+
+  // Resize grid while preserving existing seat assignments
+  const handleResizeGrid = (newRows, newCols) => {
+    const r = newRows || 0;
+    const c = newCols || 0;
+    setGrid(prev =>
+      Array.from({ length: r }, (_, ri) =>
+        Array.from({ length: c }, (_, ci) => prev[ri]?.[ci] ?? null)
+      )
+    );
+    setMaxRows(r);
+    setMaxCols(c);
   };
 
   const handleAddCategory = async () => {
@@ -525,18 +595,23 @@ export default function AdminPage() {
       const fz = zones.map(z => ({ ...z, seats: [] }));
       for (let r = 0; r < maxRows; r++) for (let c = 0; c < maxCols; c++) {
         const zId = grid[r][c];
-        if (zId) { const zt = fz.find(z => z.id === zId); if (zt) zt.seats.push({ row_label: rowLabels[r] || `R${r}`, seat_number: c + 1 }); }
+        if (zId) { const zt = fz.find(z => z.id === zId); if (zt) zt.seats.push({ row_label: getRowLabel(r), seat_number: c + 1 }); }
       }
       const validZones = fz.filter(z => z.seats.length > 0);
       if (validZones.length === 0) { setCreateMsg({ type: 'error', text: 'Bạn chưa vẽ ghế nào trên lưới!' }); return; }
       const res = await axios.post(`${API}/events`, { title: newEvent.title, description: newEvent.description, location: newEvent.location, start_time: isoStartTime, category_id: newEvent.category_id || undefined, zones: validZones }, { headers: authHeader() });
-      if (imageFile) {
-        const fd = new FormData(); fd.append('image', imageFile);
-        try { await axios.patch(`${API}/events/${res.data.data.id}/image`, fd, { headers: { ...authHeader(), 'Content-Type': 'multipart/form-data' } }); } catch { /* non-critical */ }
+      const createdEventId = res.data?.data?.eventId || res.data?.data?.id;
+
+      if (imageFile && createdEventId) {
+        // Dùng chung flow upload với nút "Thay ảnh" để tránh lệch logic.
+        await handleImageUpload(createdEventId, imageFile, { silent: true });
       }
+
       setCreateMsg({ type: 'success', text: res.data.message || 'Tạo sự kiện thành công!' });
       setNewEvent({ title: '', description: '', location: '', start_time: '', category_id: '' });
-      setGrid(Array.from({ length: maxRows }, () => Array(maxCols).fill(null)));
+      setMaxRows(15);
+      setMaxCols(30);
+      setGrid(Array.from({ length: 15 }, () => Array(30).fill(null)));
       setShowCreate(false);
       const evRes = await axios.get(`${API}/events`);
       setEvents(evRes.data.data || []);
@@ -909,8 +984,6 @@ export default function AdminPage() {
               <thead>
                 <tr style={{ borderBottom: '1px solid var(--border)', background: 'rgba(255,255,255,0.02)' }}>
                   <th style={{ textAlign: 'left', padding: '0.75rem 1rem', color: 'var(--text-muted)', fontWeight: 600 }}>Mã ĐH</th>
-                  <th style={{ textAlign: 'left', padding: '0.75rem 1rem', color: 'var(--text-muted)', fontWeight: 600 }}>Người dùng</th>
-                  <th style={{ textAlign: 'left', padding: '0.75rem 1rem', color: 'var(--text-muted)', fontWeight: 600 }}>Sự kiện</th>
                   <th style={{ textAlign: 'right', padding: '0.75rem 1rem', color: 'var(--text-muted)', fontWeight: 600 }}>Tổng tiền</th>
                   <th style={{ textAlign: 'center', padding: '0.75rem 1rem', color: 'var(--text-muted)', fontWeight: 600 }}>Trạng thái</th>
                   <th style={{ textAlign: 'left', padding: '0.75rem 1rem', color: 'var(--text-muted)', fontWeight: 600 }}>Ngày đặt</th>
@@ -928,8 +1001,6 @@ export default function AdminPage() {
                     onMouseLeave={e => e.currentTarget.style.background = selectedOrder?.id === order.id ? 'rgba(124,58,237,0.08)' : 'transparent'}
                   >
                     <td style={{ padding: '0.75rem 1rem', fontFamily: 'monospace', fontSize: '0.75rem', color: 'var(--text-muted)' }}>#{String(order.id).slice(-6)}</td>
-                    <td style={{ padding: '0.75rem 1rem', fontWeight: 500 }}>{order.user?.full_name || order.user?.email || '—'}</td>
-                    <td style={{ padding: '0.75rem 1rem', overflow: 'hidden', maxWidth: 180, textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{order.event?.title || '—'}</td>
                     <td style={{ padding: '0.75rem 1rem', textAlign: 'right', fontWeight: 700 }}>{Number(order.total_amount || 0).toLocaleString('vi-VN')}đ</td>
                     <td style={{ padding: '0.75rem 1rem', textAlign: 'center' }}>
                       <span className={`badge ${order.status === 'COMPLETED' ? 'badge-green' : order.status === 'PENDING' ? 'badge-yellow' : 'badge-gray'}`}>
@@ -1130,7 +1201,7 @@ export default function AdminPage() {
           zones={zones} setZones={setZones}
           activeZoneId={activeZoneId} setActiveZoneId={setActiveZoneId}
           grid={grid} setGrid={setGrid}
-          maxRows={maxRows} maxCols={maxCols}
+          maxRows={maxRows} maxCols={maxCols} onResizeGrid={handleResizeGrid}
           creating={creating} createMsg={createMsg}
           onSubmit={handleCreateEvent}
           onClose={() => setShowCreate(false)}

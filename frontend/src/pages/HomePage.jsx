@@ -280,7 +280,7 @@ export default function HomePage() {
                 <button
                   style={{ width: '100%', padding: '0.6rem 0.875rem', textAlign: 'left', background: !filterCategory ? 'rgba(124,58,237,0.15)' : 'transparent', border: 'none', color: '#fff', fontSize: '0.84rem', cursor: 'pointer' }}
                   onClick={() => { setFilterCategory(''); setShowFilterMenu(false); }}
-                >Táº¥t cáº£ thá»ƒ loáº¡i</button>
+                >Tất cả thể loại</button>
                 {categories.map(cat => (
                   <button
                     key={cat.id}

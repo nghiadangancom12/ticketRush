@@ -93,8 +93,14 @@ const saveImage = async (buffer, type = 'events', filename = null) => {
 const deleteImage = (imageUrl) => {
   if (!imageUrl) return; // Không có ảnh → bỏ qua
 
+  // URL bên thứ ba (Unsplash, CDN...) thì không xóa file local
+  if (/^https?:\/\//i.test(imageUrl)) return;
+
+  // imageUrl thường có dạng /img/events/xxx.webp -> bỏ dấu / đầu để join đúng path
+  const relativePath = imageUrl.startsWith('/') ? imageUrl.slice(1) : imageUrl;
+
   // Chuyển đường dẫn tương đối sang đường dẫn tuyệt đối trên ổ cứng
-  const absolutePath = path.join(process.cwd(), 'public', imageUrl);
+  const absolutePath = path.join(process.cwd(), 'public', relativePath);
 
   if (fs.existsSync(absolutePath)) {
     fs.unlink(absolutePath, (err) => {

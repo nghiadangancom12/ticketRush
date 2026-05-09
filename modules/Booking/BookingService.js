@@ -206,6 +206,27 @@ class BookingService {
             return result;
         });
     }
+
+    /**
+     * Trả một số ghế cụ thể về AVAILABLE.
+     * Dùng khi user bỏ chọn ghế đơn lẻ trên trang chọn ghế (auto-hold flow).
+     */
+    async returnSpecificSeats(userId, eventId, seatIds) {
+        const result = await prisma.seats.updateMany({
+            where: {
+                id: { in: seatIds },
+                locked_by: userId,
+                status: 'LOCKED',
+                zones: { event_id: eventId },
+            },
+            data: {
+                status: 'AVAILABLE',
+                locked_by: null,
+                locked_at: null,
+            },
+        });
+        return { releasedIds: seatIds, releasedCount: result.count };
+    }
 }
 
 module.exports = new BookingService();

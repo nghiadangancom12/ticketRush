@@ -75,6 +75,12 @@ exports.heartbeat = catchAsync(async (req, res) => {
   const { eventId } = req.params;
   const userId = req.user.id;
 
+  // Nếu queue không bật cho sự kiện này, user duyệt tự do — không cần session
+  const isActive = await queueService.isQueueActive(eventId);
+  if (!isActive) {
+    return ResponseFactory.success(res, { alive: true, noQueue: true }, 'Phiên hoạt động bình thường.');
+  }
+
   const result = await queueService.heartbeat(eventId, userId);
 
   if (!result.alive) {

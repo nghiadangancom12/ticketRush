@@ -17,10 +17,14 @@ export default function EventDetailPage() {
   const [notAllowed, setNotAllowed] = useState(false);
   const [selectedSeats, setSelectedSeats] = useState([]);
   const [errorMsg, setErrorMsg] = useState('');
-  const [holdLoading, setHoldLoading] = useState(false);
+  const [holdLoading, setHoldLoading] = useState(null); // seatId being held
+  const [holdExpiry, setHoldExpiry] = useState(null); // timestamp when first held seat expires
+  const [countdown, setCountdown] = useState(null); // seconds remaining
 
   const token = localStorage.getItem('token');
   const isNavigatingToCheckout = useRef(false);
+  const timeoutAlertShownRef = useRef(false);
+  const isReleasingOnTimeoutRef = useRef(false);
 
   const fetchEvent = async () => {
     try {
@@ -41,66 +45,161 @@ export default function EventDetailPage() {
 
     const socket = io('http://localhost:3000', { withCredentials: true });
     socket.on('connect', () => socket.emit('joinEventRoom', id));
-    socket.on('seatStatusChanged', fetchEvent);
+    socket.on('seatStatusChanged', (payload) => {
+      fetchEvent();
 
-    const heartbeatInterval = setInterval(async () => {
-      try {
-        await axios.post(`${API}/queue/${id}/heartbeat`, {}, { headers: { Authorization: `Bearer ${token}` } });
-      } catch (err) {
-        if (err.response?.status === 410) {
-          clearInterval(heartbeatInterval);
-          navigate(`/event/${id}/queue`);
-        }
+      // Đồng bộ local selection theo trạng thái backend.
+      if ((payload?.status === 'AVAILABLE' || payload?.status === 'SOLD') && Array.isArray(payload?.seats)) {
+        setSelectedSeats((prev) => {
+          const next = prev.filter((s) => !payload.seats.includes(s.id));
+          if (next.length === 0) {
+            setHoldExpiry(null);
+          }
+          return next;
+        });
       }
-    }, 15000);
+    });
 
     return () => {
       socket.disconnect();
-      clearInterval(heartbeatInterval);
-      if (!isNavigatingToCheckout.current) {
-        const pendingEventId = localStorage.getItem('checkoutEventId');
-        if (pendingEventId === id && token) {
-          fetch(`${API}/Booking/return`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-            body: JSON.stringify({ eventId: id }),
-            keepalive: true,
-          }).catch(() => {});
-        }
+      // Release held seats when leaving page without going to checkout
+      if (!isNavigatingToCheckout.current && token) {
+        fetch(`${API}/Booking/return`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ eventId: id }),
+          keepalive: true,
+        }).catch(() => {});
       }
     };
   }, [id]);
 
-  const toggleSeat = (seat, zone) => {
-    if (seat.status !== 'AVAILABLE') return;
-    const enriched = { ...seat, zoneName: zone.name, price: zone.price };
-    if (selectedSeats.find(s => s.id === seat.id)) {
-      setSelectedSeats(prev => prev.filter(s => s.id !== seat.id));
-      setErrorMsg('');
+  // Countdown timer for held seats. When time is up, release on backend then clear local UI.
+  useEffect(() => {
+    if (!holdExpiry) {
+      setCountdown(null);
+      timeoutAlertShownRef.current = false;
+      isReleasingOnTimeoutRef.current = false;
+      return;
+    }
+
+    const tick = () => {
+      const left = Math.max(0, Math.ceil((holdExpiry - Date.now()) / 1000));
+      setCountdown(left);
+
+      if (left === 0 && !timeoutAlertShownRef.current && !isReleasingOnTimeoutRef.current) {
+        timeoutAlertShownRef.current = true;
+        isReleasingOnTimeoutRef.current = true;
+
+        axios.post(`${API}/Booking/return`,
+          { eventId: id },
+          { headers: { Authorization: `Bearer ${token}` } }
+        ).catch(() => {
+          // Nếu lỗi mạng, BullMQ vẫn tự nhả ghế theo timeout đã schedule.
+        }).finally(() => {
+          setSelectedSeats([]);
+          setHoldExpiry(null);
+          setErrorMsg('');
+          fetchEvent();
+          isReleasingOnTimeoutRef.current = false;
+          window.alert('Đã hết 60 giây giữ chỗ. Vui lòng chọn lại ghế.');
+        });
+      }
+    };
+
+    tick();
+    const timer = setInterval(tick, 1000);
+    return () => clearInterval(timer);
+  }, [holdExpiry, id, token]);
+
+  // Auto-hold: click seat → immediately call /Booking/hold for that single seat
+  const toggleSeat = async (seat, zone) => {
+    const alreadySelected = selectedSeats.find(s => s.id === seat.id);
+    if (holdLoading) return;
+    if (!alreadySelected && seat.status !== 'AVAILABLE') return;
+
+    if (alreadySelected) {
+      setHoldLoading(seat.id);
+      const remainingSeats = selectedSeats.filter(s => s.id !== seat.id);
+      // Deselect: release just this seat
+      try {
+        await axios.post(`${API}/Booking/return-seats`,
+          { eventId: id, seatIds: [seat.id] },
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+      } catch (err) {
+        // Backward compatibility: nếu backend cũ chưa có /return-seats,
+        // dùng /return rồi giữ lại các ghế còn lại.
+        if (err.response?.status === 404) {
+          await axios.post(`${API}/Booking/return`,
+            { eventId: id },
+            { headers: { Authorization: `Bearer ${token}` } }
+          );
+
+          if (remainingSeats.length > 0) {
+            await axios.post(`${API}/Booking/hold`,
+              { eventId: id, seatIds: remainingSeats.map(s => s.id) },
+              { headers: { Authorization: `Bearer ${token}` } }
+            );
+          }
+        } else {
+          throw err;
+        }
+      }
+
+      try {
+        // Update local seat state immediately so user can reselect right away.
+        setEventData(prev => {
+          if (!prev?.zones) return prev;
+          return {
+            ...prev,
+            zones: prev.zones.map(z => ({
+              ...z,
+              seats: z.seats?.map(s => s.id === seat.id
+                ? { ...s, status: 'AVAILABLE', locked_by: null, locked_at: null }
+                : s),
+            })),
+          };
+        });
+
+        setSelectedSeats(prev => {
+          const next = prev.filter(s => s.id !== seat.id);
+          if (next.length === 0) setHoldExpiry(null);
+          return next;
+        });
+        setErrorMsg('');
+      } catch (err) {
+        setErrorMsg(err.response?.data?.message || 'Hủy giữ chỗ thất bại. Vui lòng thử lại.');
+        fetchEvent();
+      } finally {
+        setHoldLoading(null);
+      }
     } else {
       if (selectedSeats.length >= 4) { setErrorMsg('Bạn chỉ được chọn tối đa 4 ghế!'); return; }
-      setSelectedSeats(prev => [...prev, enriched]);
+      setHoldLoading(seat.id);
       setErrorMsg('');
+      try {
+        await axios.post(`${API}/Booking/hold`,
+          { seatIds: [seat.id], eventId: id },
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        const enriched = { ...seat, zoneName: zone.name, price: zone.price };
+        setSelectedSeats(prev => [...prev, enriched]);
+        // Set expiry only on first held seat
+        setHoldExpiry(prev => prev ?? Date.now() + 60 * 1000);
+      } catch (err) {
+        setErrorMsg(err.response?.data?.message || 'Ghế này đã được người khác giữ. Vui lòng chọn ghế khác.');
+        fetchEvent();
+      } finally {
+        setHoldLoading(null);
+      }
     }
   };
 
-  const handleHoldSeats = async () => {
-    setHoldLoading(true); setErrorMsg('');
-    try {
-      await axios.post(`${API}/Booking/hold`,
-        { seatIds: selectedSeats.map(s => s.id), eventId: id },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      localStorage.setItem('checkoutEventId', id);
-      isNavigatingToCheckout.current = true;
-      navigate('/checkout');
-    } catch (err) {
-      setErrorMsg(err.response?.data?.message || 'Có lỗi xảy ra khi giữ ghế.');
-      fetchEvent();
-      setSelectedSeats([]);
-    } finally {
-      setHoldLoading(false);
-    }
+  const handleCheckout = () => {
+    localStorage.setItem('checkoutEventId', id);
+    isNavigatingToCheckout.current = true;
+    navigate('/checkout');
   };
 
   /* ── Not allowed ── */
@@ -249,9 +348,13 @@ export default function EventDetailPage() {
                             const seat = seats.find(s => s.seat_number === cIdx + 1);
                             if (!seat) return <div key={cIdx} style={{ width: 20, height: 20, flexShrink: 0 }} />;
                             const isSelected = selectedSeats.some(s => s.id === seat.id);
+                            const isBeingHeld = holdLoading === seat.id;
                             let extraCls = '';
                             let bgStyle = {};
-                            if (isSelected) {
+                            if (isBeingHeld) {
+                              extraCls = 's-loading';
+                              bgStyle = { background: 'rgba(251,191,36,0.4)', borderColor: '#fbbf24', cursor: 'wait' };
+                            } else if (isSelected) {
                               extraCls = 's-selected';
                             } else if (seat.status === 'LOCKED') {
                               extraCls = 's-locked';
@@ -298,13 +401,21 @@ export default function EventDetailPage() {
             </div>
             <div>
               <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>
-                Đã chọn: {selectedSeats.map(s => `${s.zoneName}-${s.row_label}${s.seat_number}`).join(', ')}
+                Đã giữ: {selectedSeats.map(s => `${s.zoneName}-${s.row_label}${s.seat_number}`).join(', ')}
               </div>
               <div style={{ fontWeight: 700, fontSize: '1rem' }}>
                 {totalSelected.toLocaleString('vi-VN')}đ
                 <span style={{ fontWeight: 400, fontSize: '0.8rem', color: 'var(--text-secondary)', marginLeft: '0.4rem' }}>
                   ({selectedSeats.length} vé)
                 </span>
+                {countdown !== null && (
+                  <span style={{
+                    marginLeft: '0.75rem', fontSize: '0.8rem', fontWeight: 700,
+                    color: countdown <= 15 ? '#ef4444' : '#f59e0b',
+                  }}>
+                    ⏱ {countdown}s
+                  </span>
+                )}
               </div>
             </div>
           </div>
@@ -312,15 +423,12 @@ export default function EventDetailPage() {
           <button
             className="btn btn-primary"
             style={{ padding: '0.75rem 1.75rem', fontSize: '0.9rem', gap: '0.5rem' }}
-            onClick={handleHoldSeats}
-            disabled={holdLoading}
+            onClick={handleCheckout}
           >
-            {holdLoading ? 'Đang giữ chỗ...' : 'Tiếp tục thanh toán'}
-            {!holdLoading && (
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                <line x1="5" y1="12" x2="19" y2="12" /><polyline points="12 5 19 12 12 19" />
-              </svg>
-            )}
+            Thanh toán ngay
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+              <line x1="5" y1="12" x2="19" y2="12" /><polyline points="12 5 19 12 12 19" />
+            </svg>
           </button>
         </div>
       )}
