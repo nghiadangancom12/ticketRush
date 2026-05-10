@@ -1,6 +1,22 @@
-﻿version: '3.8'
+version: '3.8'
 
 services:
+  postgres:
+    image: postgres:16
+    container_name: ticketrush-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: ticketrush
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U user -d ticketrush"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
   redis:
     image: redis:7-alpine
     container_name: ticketrush-redis
@@ -20,8 +36,11 @@ services:
       - .env
     environment:
       - REDIS_URL=redis://redis:6379
+      - DATABASE_URL=postgresql://user:password@postgres:5432/ticketrush
+      - DIRECT_URL=postgresql://user:password@postgres:5432/ticketrush
     depends_on:
       - redis
+      - postgres
 
   worker-email:
     build: .
@@ -32,8 +51,11 @@ services:
       - .env
     environment:
       - REDIS_URL=redis://redis:6379
+      - DATABASE_URL=postgresql://user:password@postgres:5432/ticketrush
+      - DIRECT_URL=postgresql://user:password@postgres:5432/ticketrush
     depends_on:
       - redis
+      - postgres
 
   worker-seat-release:
     build: .
@@ -44,8 +66,11 @@ services:
       - .env
     environment:
       - REDIS_URL=redis://redis:6379
+      - DATABASE_URL=postgresql://user:password@postgres:5432/ticketrush
+      - DIRECT_URL=postgresql://user:password@postgres:5432/ticketrush
     depends_on:
       - redis
+      - postgres
 
 volumes:
   ticketrush_uploads:
