@@ -2,7 +2,9 @@ import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import axios from 'axios';
 
-const API = 'http://localhost:3000/api';
+import { API_BASE } from '../config';
+
+const API = API_BASE;
 
 export default function CheckoutPage() {
   const navigate = useNavigate();

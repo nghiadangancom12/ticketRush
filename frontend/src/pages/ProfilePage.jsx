@@ -3,7 +3,9 @@ import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { QRCodeCanvas } from 'qrcode.react';
 
-const API = 'http://localhost:3000/api';
+import { API_BASE } from '../config';
+
+const API = API_BASE;
 const GENDER_LABELS = { MALE: 'Nam', FEMALE: 'Nữ', OTHER: 'Khác' };
 
 function Avatar({ name, url, size = 72 }) {

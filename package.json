@@ -38,7 +38,15 @@
     "start:dev": "NODE_ENV=development nodemon server.js",
     "start:prod": "NODE_ENV=production node server.js",
     "test": "jest --detectOpenHandles",
-    "seed": "node prisma/seed.js"
+    "seed": "node prisma/seed.js",
+    "seed:k6": "node prisma/seed-k6.js",
+    "k6:stack:up": "docker compose -f docker-compose.k6.yml up -d --build",
+    "k6:stack:down": "docker compose -f docker-compose.k6.yml down",
+    "k6:seat": "k6 run tests/k6/rush-seat-contention.js",
+    "k6:queue": "k6 run tests/k6/rush-queue-admission.js",
+    "k6:mixed": "k6 run tests/k6/rush-mixed-e2e.js",
+    "k6:race": "k6 run tests/k6/race-condition.js",
+    "k6:stress": "k6 run tests/k6/stress-test.js"
   },
   "prisma": {
     "seed": "node prisma/seed.js"

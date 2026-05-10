@@ -3,7 +3,9 @@ import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { io } from 'socket.io-client';
 
-const API = 'http://localhost:3000/api';
+import { API_BASE, SOCKET_URL } from '../config';
+
+const API = API_BASE;
 
 export default function QueuePage() {
   const { id: eventId } = useParams();
@@ -71,7 +73,7 @@ export default function QueuePage() {
       .then(d => { if (d?.status === 'in_queue') startPolling(); })
       .catch(err => { setErrorMsg(err.response?.data?.message || 'Không thể kết nối hàng chờ.'); setStatus('error'); });
 
-    const socket = io('http://localhost:3000', { withCredentials: true });
+    const socket = io(SOCKET_URL, { withCredentials: true });
     socketRef.current = socket;
     socket.on('connect', () => socket.emit('join_queue', localStorage.getItem('userId')));
     socket.on('queue_turn', (data) => {

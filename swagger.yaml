@@ -1086,8 +1086,8 @@ paths:
       responses:
         '200':
           description: Giữ ghế thành công
-        '412':
-          description: Một số ghế không còn trống
+        '400':
+          description: Một số ghế không còn trống hoặc đã bị người khác giữ
 
   /api/Booking/checkout:
     post:

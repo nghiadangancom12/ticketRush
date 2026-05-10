@@ -2,7 +2,9 @@ import { useState } from 'react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 
-const API = 'http://localhost:3000/api';
+import { API_BASE } from '../config';
+
+const API = API_BASE;
 
 export default function AuthPage() {
   const [isLogin, setIsLogin] = useState(true);

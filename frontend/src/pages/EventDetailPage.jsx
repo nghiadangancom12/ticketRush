@@ -3,7 +3,9 @@ import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import axios from 'axios';
 import { io } from 'socket.io-client';
 
-const API = 'http://localhost:3000/api';
+import { API_BASE, SOCKET_URL } from '../config';
+
+const API = API_BASE;
 
 const ZONE_PALETTE = ['#dc2626', '#6366f1', '#6b7280', '#f59e0b', '#10b981', '#3b82f6'];
 const ZONE_BADGE_CLASSES = ['badge-red', 'badge-purple', 'badge-gray', 'badge-yellow', 'badge-green', 'badge-cyan'];
@@ -43,7 +45,7 @@ export default function EventDetailPage() {
     if (!token) { navigate('/auth'); return; }
     fetchEvent();
 
-    const socket = io('http://localhost:3000', { withCredentials: true });
+    const socket = io(SOCKET_URL, { withCredentials: true });
     socket.on('connect', () => socket.emit('joinEventRoom', id));
     socket.on('seatStatusChanged', (payload) => {
       fetchEvent();
