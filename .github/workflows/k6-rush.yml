@@ -68,7 +68,7 @@ jobs:
         run: npx prisma generate
 
       - name: Prepare database schema
-        run: npx prisma db push --skip-generate
+        run: npx prisma db push
 
       - name: Seed deterministic k6 fixtures
         run: node prisma/seed-k6.js
