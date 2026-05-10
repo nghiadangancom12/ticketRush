@@ -1,0 +1,53 @@
+{
+  "metrics": {
+    "http_req_failed": {
+      "contains": "default",
+      "values": {
+        "rate": 0,
+        "passes": 0,
+        "fails": 3913
+      },
+      "type": "rate"
+    },
+    "http_req_duration": {
+      "type": "trend",
+      "contains": "time",
+      "values": {
+        "p(99)": 221.83177200000017,
+        "max": 421.9806,
+        "avg": 20.77789256325074,
+        "min": 2.9998,
+        "med": 8.7843,
+        "p(90)": 30.0793,
+        "p(95)": 98.681
+      }
+    },
+    "server_error_rate": {
+      "values": {
+        "rate": 0,
+        "passes": 0,
+        "fails": 3913
+      },
+      "thresholds": {
+        "rate<0.05": {
+          "ok": true
+        }
+      },
+      "type": "rate",
+      "contains": "default"
+    },
+    "stress_latency_ms": {
+      "type": "trend",
+      "contains": "default",
+      "values": {
+        "med": 8.7802,
+        "p(90)": 30.07935,
+        "p(95)": 98.681,
+        "p(99)": 221.84601599999982,
+        "max": 421.9806,
+        "avg": 20.778525511247484,
+        "min": 2.9998
+      }
+    }
+  }
+}

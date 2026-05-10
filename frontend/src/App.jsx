@@ -7,6 +7,7 @@ import CheckoutPage from './pages/CheckoutPage';
 import AuthPage from './pages/AuthPage';
 import AdminPage from './pages/AdminPage';
 import ProfilePage from './pages/ProfilePage';
+import { API_BASE } from './config';
 
 function Navigation() {
   const navigate = useNavigate();
@@ -20,7 +21,7 @@ function Navigation() {
   const initials = name ? name.split(' ').map(w => w[0]).filter(Boolean).slice(-2).join('').toUpperCase() : '?';
 
   const handleLogout = async () => {
-    try { await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000/api'}/auth/logout`, { credentials: 'include' }); } catch { /* ignore */ }
+    try { await fetch(`${API_BASE}/auth/logout`, { credentials: 'include' }); } catch { /* ignore */ }
     ['token', 'userId', 'userRole', 'userName', 'avatarUrl', 'checkoutEventId'].forEach(k => localStorage.removeItem(k));
     navigate('/auth');
   };

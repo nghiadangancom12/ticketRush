@@ -1,0 +1,172 @@
+name: k6-rush
+
+on:
+  push:
+    branches: [ "main", "master" ]
+  pull_request:
+    branches: [ "main", "master" ]
+  workflow_dispatch:
+
+concurrency:
+  group: k6-rush-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  rush-load-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: ticketrush
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U postgres -d ticketrush"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd="redis-cli ping"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/ticketrush
+      JWT_SECRET: ci-secret-for-k6
+      JWT_EXPIRES_IN: 24h
+      REDIS_URL: redis://localhost:6379
+      FRONTEND_URL: http://localhost:5173
+      NODE_ENV: test
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Setup k6
+        uses: grafana/setup-k6-action@v1
+
+      - name: Generate Prisma Client
+        run: npx prisma generate
+
+      - name: Prepare database schema
+        run: npx prisma db push --skip-generate
+
+      - name: Seed deterministic k6 fixtures
+        run: node prisma/seed-k6.js
+
+      - name: Ensure artifacts directory
+        run: mkdir -p tests/k6/artifacts
+
+      - name: Start API server
+        run: |
+          nohup node server.js > tests/k6/artifacts/server.log 2>&1 &
+          echo $! > tests/k6/artifacts/server.pid
+
+      - name: Wait for API health
+        run: |
+          for i in {1..45}; do
+            if curl -sSf http://localhost:3000/api/events >/dev/null; then
+              echo "API is ready"
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "API failed to start" && exit 1
+
+      # ── k6 runs ────────────────────────────────────────────
+      # Stream to Grafana Cloud when K6_CLOUD_TOKEN secret is set
+
+      - name: Run k6 race condition (CI gate — double-booking check)
+        run: |
+          if [ -n "$K6_CLOUD_TOKEN" ]; then
+            k6 run --out cloud tests/k6/race-condition.js
+          else
+            k6 run tests/k6/race-condition.js
+          fi
+        env:
+          K6_CLOUD_TOKEN: ${{ secrets.K6_CLOUD_TOKEN }}
+
+      - name: Re-seed fixtures (reset locked seats)
+        run: node prisma/seed-k6.js
+
+      - name: Run k6 seat contention (CI gate)
+        run: |
+          if [ -n "$K6_CLOUD_TOKEN" ]; then
+            k6 run --out cloud tests/k6/rush-seat-contention.js
+          else
+            k6 run tests/k6/rush-seat-contention.js
+          fi
+        env:
+          K6_CLOUD_TOKEN: ${{ secrets.K6_CLOUD_TOKEN }}
+
+      - name: Run k6 queue admission (guardrail)
+        run: |
+          if [ -n "$K6_CLOUD_TOKEN" ]; then
+            k6 run --out cloud tests/k6/rush-queue-admission.js
+          else
+            k6 run tests/k6/rush-queue-admission.js
+          fi
+        env:
+          K6_CLOUD_TOKEN: ${{ secrets.K6_CLOUD_TOKEN }}
+
+      - name: Run k6 mixed e2e (bonus)
+        continue-on-error: true
+        run: |
+          if [ -n "$K6_CLOUD_TOKEN" ]; then
+            k6 run --out cloud tests/k6/rush-mixed-e2e.js
+          else
+            k6 run tests/k6/rush-mixed-e2e.js
+          fi
+        env:
+          K6_CLOUD_TOKEN: ${{ secrets.K6_CLOUD_TOKEN }}
+
+      - name: Re-seed fixtures (reset for stress test)
+        run: node prisma/seed-k6.js
+
+      - name: Run k6 stress test (report only — find breaking point)
+        continue-on-error: true
+        run: |
+          if [ -n "$K6_CLOUD_TOKEN" ]; then
+            k6 run --out cloud tests/k6/stress-test.js
+          else
+            k6 run tests/k6/stress-test.js
+          fi
+        env:
+          K6_CLOUD_TOKEN: ${{ secrets.K6_CLOUD_TOKEN }}
+
+
+      # ── Artifacts ───────────────────────────────────────────
+      - name: Upload k6 artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: k6-rush-artifacts
+          path: |
+            tests/k6/artifacts/*.json
+            tests/k6/artifacts/*.html
+            tests/k6/artifacts/*.log
+
+      - name: Stop API server
+        if: always()
+        run: |
+          if [ -f tests/k6/artifacts/server.pid ]; then
+            kill $(cat tests/k6/artifacts/server.pid) || true
+          fi

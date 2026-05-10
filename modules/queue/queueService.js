@@ -2,7 +2,8 @@ const redis = require('../../config/redis');
 
 // Khai báo thời gian giới hạn tuyệt đối (Hard Timeout)
 // Nghĩa có thể đổi số 10 thành số phút mong muốn
-const HARD_TIMEOUT_MS = 1 * 60 * 1000; // 10 phút
+const QUEUE_TTL_MS = Number(process.env.QUEUE_TTL_MS || 20_000);
+const QUEUE_HARD_TIMEOUT_MS = Number(process.env.QUEUE_HARD_TIMEOUT_MS || 10 * 60 * 1000);
 const processQueueLua = `
   -- Khai báo biến từ mảng KEYS và ARGV truyền vào
   local activeKey = KEYS[1]
@@ -184,17 +185,14 @@ async toggleQueue(eventId, isActive) {
   // 5. Heartbeat — "Khóa kép": Gia hạn 20s nhưng chém đẹp nếu quá 10 phút
   async heartbeat(eventId, userId) {
     const now = Date.now();
-    const TTL_MS = 20 * 1000;
-    const HARD_TIMEOUT_MS = 10 * 60 * 1000; // 10 phút
-
     const result = await redis.luaHeartbeat(
       `queue:active_sessions:${eventId}`, // KEYS[1]
       `queue:session_starts:${eventId}`,  // KEYS[2]
       `queue:list:${eventId}`,            // KEYS[3]
       userId,                             // ARGV[1]
       now,                                // ARGV[2]
-      TTL_MS,                             // ARGV[3]
-      HARD_TIMEOUT_MS                     // ARGV[4]
+      QUEUE_TTL_MS,                       // ARGV[3]
+      QUEUE_HARD_TIMEOUT_MS               // ARGV[4]
     );
 
     const status = result[0];
@@ -210,7 +208,7 @@ async toggleQueue(eventId, isActive) {
     
     return { 
         alive: true, 
-        expiresAt: now + TTL_MS,
+        expiresAt: now + QUEUE_TTL_MS,
         hardTimeoutLeft: timeLeft
     };
   }

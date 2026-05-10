@@ -2,7 +2,9 @@ import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import axios from 'axios';
 
-const API = 'http://localhost:3000/api';
+import { API_BASE } from '../config';
+
+const API = API_BASE;
 
 const CATEGORY_GRADIENTS = [
   { bg: 'linear-gradient(160deg, #1e1b4b 0%, #312e81 60%, #0f0f2e 100%)', overlay: 'rgba(99,102,241,0.15)' },
