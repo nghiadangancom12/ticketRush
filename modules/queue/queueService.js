@@ -3,7 +3,7 @@ const redis = require('../../config/redis');
 // Khai báo thời gian giới hạn tuyệt đối (Hard Timeout)
 // Nghĩa có thể đổi số 10 thành số phút mong muốn
 const QUEUE_TTL_MS = Number(process.env.QUEUE_TTL_MS || 20_000);
-const QUEUE_HARD_TIMEOUT_MS = Number(process.env.QUEUE_HARD_TIMEOUT_MS || 10 * 60 * 1000);
+const QUEUE_HARD_TIMEOUT_MS = Number(process.env.QUEUE_HARD_TIMEOUT_MS || 1 * 60 * 1000);
 const processQueueLua = `
   -- Khai báo biến từ mảng KEYS và ARGV truyền vào
   local activeKey = KEYS[1]

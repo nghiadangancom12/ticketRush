@@ -38,9 +38,19 @@ app.use(cors(corsOptions));
 // 2. Chống dội bom request (Rate Limiting)
 // Giới hạn 100 requests / 15 phút cho cùng 1 IP
 const limiter = rateLimit({
-  max: process.env.NODE_ENV === 'production' ? 100 : 50000,
+  max: process.env.NODE_ENV === 'production' ? 100 : 2000,
   windowMs: 15 * 60 * 1000,
-  message: 'Bạn đã gửi quá nhiều requests từ IP này, vui lòng thử lại sau 15 phút!'
+  // Bỏ cái dòng 'message: ...' cũ đi và thay bằng handler:
+  handler: (req, res, next) => {
+    // Nếu bạn đang có class AppError và globalErrorHandler:
+    return next(new AppError('Bạn đã gửi quá nhiều requests từ IP này, vui lòng thử lại sau 15 phút!', 429));
+    
+    // HOẶC nếu muốn trả thẳng JSON (tùy cấu trúc bạn đang dùng):
+    // return res.status(429).json({
+    //   status: 'error',
+    //   message: 'Bạn đã gửi quá nhiều requests từ IP này, vui lòng thử lại sau 15 phút!'
+    // });
+  }
 });
 app.use('/api', limiter);
 

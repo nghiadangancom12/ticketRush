@@ -4,51 +4,60 @@ const { seatReleaseQueue, emailQueue } = require('../jobs/queues');
 
 class BookingService {
     async holdSeats(userId, eventId, seatIds) {
+        // Lọc trùng lặp ID ghế ngay từ đầu
+        const uniqueSeatIds = [...new Set(seatIds)];
+
         return await prisma.$transaction(async (tx) => {
-            // 1. NGHIỆP VỤ: Kiểm tra tổng số vé User đang giữ trong Event này
+            // 🌟 1. CHỐT CHẶN HACKER: Khóa User Record lại (Chống 1 người bắn 10 API lách luật)
+            await tx.$queryRaw`SELECT id FROM "users" WHERE id = ${userId}::uuid FOR UPDATE`;
+
+            // 2. NGHIỆP VỤ: Kiểm tra Event
             const event = await tx.events.findUnique({
                 where: { id: eventId }
             });
             if (!event) throw new AppError('Sự kiện không tồn tại.', 404);
-            const userSeatsInEvent = await tx.seats.count({
+
+            // 🌟 3. FIX LỖI ĐẾM VÉ: Chỉ đếm những vé User đang giữ MÀ KHÔNG NẰM TRONG mảng uniqueSeatIds
+            const otherSeatsUserHolds = await tx.seats.count({
                 where: {
                     locked_by: userId,
                     zones: { event_id: eventId },
-                    status: { in: ['LOCKED', 'SOLD'] }
+                    status: { in: ['LOCKED', 'SOLD'] },
+                    id: { notIn: uniqueSeatIds }
                 }
             });
 
-            if (userSeatsInEvent + seatIds.length > 4) {
+            if (otherSeatsUserHolds + uniqueSeatIds.length > 4) {
                 throw new AppError('Bạn chỉ được giữ/mua tổng cộng tối đa 4 vé trong 1 sự kiện.', 400);
             }
 
-            // 2. NGHIỆP VỤ: Row-Level Locking để chống Double-booking
-            const placeholders = seatIds.map((_, i) => `$${i + 1}::uuid`).join(', ');
+            // 4. NGHIỆP VỤ: Row-Level Locking chống Double-booking
+            const placeholders = uniqueSeatIds.map((_, i) => `$${i + 1}::uuid`).join(', ');
             const query = `
-        SELECT id, status, locked_by FROM "seats"
-        WHERE id IN (${placeholders})
-        FOR UPDATE
-      `;
-            const lockedSeatsQuery = await tx.$queryRawUnsafe(query, ...seatIds);
+                SELECT id, status, locked_by FROM "seats"
+                WHERE id IN (${placeholders})
+                FOR UPDATE
+            `;
+            const lockedSeatsQuery = await tx.$queryRawUnsafe(query, ...uniqueSeatIds);
 
-            if (lockedSeatsQuery.length !== seatIds.length) {
+            if (lockedSeatsQuery.length !== uniqueSeatIds.length) {
                 throw new AppError('Một hoặc nhiều ghế không tồn tại hoặc không hợp lệ.', 400);
             }
 
-            // Allow same user to re-hold their own locked seats (handles StrictMode double-call
-            // and edge cases where user returns to checkout within the 60s window).
+            // Xử lý Re-hold thông minh (Chống React StrictMode double call)
             const unavailable = lockedSeatsQuery.filter(s => {
                 if (s.status === 'AVAILABLE') return false;
                 if (s.status === 'LOCKED' && String(s.locked_by) === String(userId)) return false;
                 return true;
             });
+            
             if (unavailable.length > 0) {
                 throw new AppError('Một hoặc nhiều ghế đã bị người khác giữ. Vui lòng chọn ghế khác.', 400);
             }
 
-            // 3. Cập nhật trạng thái ghế → LOCKED
+            // 5. Cập nhật trạng thái ghế → LOCKED
             await tx.seats.updateMany({
-                where: { id: { in: seatIds } },
+                where: { id: { in: uniqueSeatIds } },
                 data: {
                     status: 'LOCKED',
                     locked_by: userId,
@@ -56,22 +65,10 @@ class BookingService {
                 }
             });
 
-            return seatIds;
+            return uniqueSeatIds;
         });
-
-        // 4. Sau khi transaction thành công: đẩy Delayed Job vào BullMQ
-        //    Job này sẽ tự động chạy sau 60 giây nếu user chưa thanh toán.
-        //    (Đặt ngoài transaction để tránh delay ảnh hưởng đến DB lock)
     }
 
-    /**
-     * holdSeats không thể đẩy job bên trong transaction vì transaction
-     * là async và job cần biết kết quả thành công của transaction.
-     * Nên ta override lại flow ở Controller hoặc tách hàm helper.
-     *
-     * Giải pháp: Tách logic enqueue ra một hàm riêng để BookingController gọi
-     * sau khi holdSeats() resolve thành công.
-     */
     async scheduleRelease(userId, eventId, seatIds) {
         await seatReleaseQueue.add(
             'release-seats',
@@ -82,16 +79,15 @@ class BookingService {
                 backoff: { type: 'exponential', delay: 2000 },
             }
         );
-        console.log(`[BullMQ] ⏰ Đã lên lịch nhả ghế sau 60s cho user ${userId}, seatIds: [${seatIds.join(', ')}]`);
+        console.log(`[BullMQ] ⏰ Đã lên lịch nhả ghế sau 60s cho user ${userId}`);
     }
 
     async checkout(userId, eventId) {
         const result = await prisma.$transaction(async (tx) => {
-            // 1. NGHIỆP VỤ: Lấy các ghế đang LOCKED của user trong event này.
-            // Lưu ý: KHÔNG lọc theo locked_at ở đây — BullMQ seatReleaseWorker
-            // đã chịu trách nhiệm tự động nhả ghế sau 60 giây.
-            // Lọc theo thời gian sẽ gây 400 sai nếu có clock drift hay checkout
-            // được gọi khi đang ở biên giới 1 phút.
+            // 🌟 CHỐT CHẶN 1: Khóa User (Chống Double-click sinh ra 2 đơn hàng)
+            await tx.$queryRaw`SELECT id FROM "users" WHERE id = ${userId}::uuid FOR UPDATE`;
+
+            // 1. Tìm ghế đang LOCKED
             const lockedSeats = await tx.seats.findMany({
                 where: {
                     locked_by: userId,
@@ -105,6 +101,15 @@ class BookingService {
                 throw new AppError('Bạn không có vé nào đang giữ hoặc vé đã hết hạn thanh toán.', 400);
             }
 
+            // 🌟 CHỐT CHẶN 2: Khóa Ghế ngay lập tức (Chống BullMQ nhảy vào nhả ghế lúc đang thanh toán)
+            const seatIds = lockedSeats.map(s => s.id);
+            const placeholders = seatIds.map((_, i) => `$${i + 1}::uuid`).join(', ');
+            await tx.$queryRawUnsafe(`
+                SELECT id FROM "seats" 
+                WHERE id IN (${placeholders}) 
+                FOR UPDATE
+            `, ...seatIds);
+
             // 2. Tính tiền và tạo Đơn hàng
             const totalAmount = lockedSeats.reduce((sum, seat) => sum + Number(seat.zones.price), 0);
 
@@ -112,12 +117,8 @@ class BookingService {
                 data: {
                     total_amount: totalAmount,
                     status: 'PAID',
-                    users: {
-                        connect: { id: userId }
-                    },
-                    events: {
-                        connect: { id: eventId }
-                    }
+                    users: { connect: { id: userId } },
+                    events: { connect: { id: eventId } }
                 }
             });
 
@@ -128,21 +129,22 @@ class BookingService {
                 return {
                     order_id: newOrder.id,
                     seat_id: seat.id,
-                    qr_code: ticketCode
+                    qr_code: ticketCode,
+                    status: 'UNUSED'
                 };
             });
             await tx.tickets.createMany({ data: ticketData });
 
             // 4. Chốt ghế → SOLD
             await tx.seats.updateMany({
-                where: { id: { in: lockedSeats.map(s => s.id) } },
+                where: { id: { in: seatIds } },
                 data: { status: 'SOLD' }
             });
 
-            return { order: newOrder, seats: lockedSeats.map(s => s.id) };
+            return { order: newOrder, seats: seatIds };
         });
 
-        // 5. Đẩy job gửi email vào BullMQ (không block HTTP response)
+        // 5. Đẩy job gửi email vào BullMQ
         await emailQueue.add(
             'send-ticket-email',
             { orderId: result.order.id },
@@ -151,9 +153,9 @@ class BookingService {
                 backoff: { type: 'exponential', delay: 2000 },
             }
         );
-        console.log(`[BullMQ] 📧 Đã đẩy job gửi email cho đơn hàng: ${result.order.id}`);
+        console.log(`[BullMQ] 📧 Đã đẩy job gửi email cho đơn: ${result.order.id}`);
 
-        // 6. Giải phóng Virtual Queue Slot sớm cho người tiếp theo
+        // 6. Giải phóng Virtual Queue Slot
         try {
             const queueService = require('../queue/queueService');
             await queueService.removeAllowed(eventId, userId);
@@ -163,14 +165,12 @@ class BookingService {
 
         return result;
     }
-    /**
-     * Trả ghế — Nhả tất cả ghế LOCKED của user trong event về AVAILABLE.
-     * Được gọi khi user bấm "Huỷ" hoặc "Quay lại" từ trang Checkout.
-     * Đồng thời giải phóng slot Active Queue để người tiếp theo được vào.
-     */
+
     async returnSeats(userId, eventId) {
         return await prisma.$transaction(async (tx) => {
-            // 1. Tìm tất cả ghế đang bị lock bởi user này trong event này
+            // Khóa User nhẹ nhàng để chống spam click nút Hủy
+            await tx.$queryRaw`SELECT id FROM "users" WHERE id = ${userId}::uuid FOR UPDATE`;
+
             const lockedSeats = await tx.seats.findMany({
                 where: {
                     locked_by: userId,
@@ -186,7 +186,6 @@ class BookingService {
 
             const ids = lockedSeats.map(s => s.id);
 
-            // 2. Nhả ghế về AVAILABLE
             await tx.seats.updateMany({
                 where: { id: { in: ids } },
                 data: {
@@ -198,40 +197,17 @@ class BookingService {
 
             return { releasedIds: ids };
         }).then(async (result) => {
-            // 3. Sau khi DB commit: giải phóng slot Active Queue
-            //    → người tiếp theo trong hàng chờ sẽ được QueueWorker đẩy vào
             if (result.releasedIds.length > 0) {
                 try {
                     const queueService = require('../queue/queueService');
                     await queueService.removeAllowed(eventId, userId);
-                    console.log(`[Booking] ↩️  User ${userId} trả ${result.releasedIds.length} ghế + giải phóng queue slot.`);
+                    console.log(`[Booking] ↩️  User ${userId} trả ${result.releasedIds.length} ghế.`);
                 } catch (err) {
                     console.error('[Booking] Lỗi giải phóng queue slot:', err.message);
                 }
             }
             return result;
         });
-    }
-
-    /**
-     * Trả một số ghế cụ thể về AVAILABLE.
-     * Dùng khi user bỏ chọn ghế đơn lẻ trên trang chọn ghế (auto-hold flow).
-     */
-    async returnSpecificSeats(userId, eventId, seatIds) {
-        const result = await prisma.seats.updateMany({
-            where: {
-                id: { in: seatIds },
-                locked_by: userId,
-                status: 'LOCKED',
-                zones: { event_id: eventId },
-            },
-            data: {
-                status: 'AVAILABLE',
-                locked_by: null,
-                locked_at: null,
-            },
-        });
-        return { releasedIds: seatIds, releasedCount: result.count };
     }
 }
 
