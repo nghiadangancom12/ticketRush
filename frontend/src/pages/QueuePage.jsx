@@ -42,7 +42,7 @@ export default function QueuePage() {
   const stopPolling = () => { if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null; } };
 
   const doJoin = async () => {
-    if (!token) { navigate('/auth'); return; }
+    if (!token) { navigate('/auth', { replace: true }); return; }
     const res = await axios.post(`${API}/queue/${eventId}/join`, {}, { headers: { Authorization: `Bearer ${token}` } });
     const d = res.data.data;
     if (d.status === 'allowed' || d.status === 'no_queue') {
@@ -67,7 +67,7 @@ export default function QueuePage() {
   };
 
   useEffect(() => {
-    if (!token) { navigate('/auth'); return; }
+    if (!token) { navigate('/auth', { replace: true }); return; }
     setStatus('joining');
     doJoin()
       .then(d => { if (d?.status === 'in_queue') startPolling(); })

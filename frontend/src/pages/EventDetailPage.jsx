@@ -42,7 +42,7 @@ export default function EventDetailPage() {
   };
 
   useEffect(() => {
-    if (!token) { navigate('/auth'); return; }
+    if (!token) { navigate('/auth', { replace: true }); return; }
     fetchEvent();
 
     const socket = io(SOCKET_URL, { withCredentials: true });
@@ -122,7 +122,6 @@ export default function EventDetailPage() {
   const handleCheckout = () => {
     if (selectedSeats.length === 0) return;
     clearInterval(countdownRef.current);
-    localStorage.removeItem('seatSelectionExpiry');
     localStorage.setItem('checkoutEventId', id);
     navigate('/checkout', { state: { eventId: id, seats: selectedSeats } });
   };
