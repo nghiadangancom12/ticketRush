@@ -43,29 +43,28 @@ exports.checkout = catchAsync(async (req, res) => {
  * Trả toàn bộ ghế đang LOCKED về AVAILABLE + giải phóng slot queue.
  * Gọi khi user bấm Hủy / Quay Lại trên trang Checkout.
  */
-// exports.returnSeats = catchAsync(async (req, res) => {
-//   const { eventId } = req.body;
-//   const result = await bookingService.returnSeats(req.user.id, eventId);
+exports.returnSeats = catchAsync(async (req, res) => {
+  const { eventId } = req.body;
+  const result = await bookingService.returnSeats(req.user.id, eventId);
 
-//   // Báo hiệu real-time: các ghế này đã về AVAILABLE
-//   const io = req.app.get('io');
-//   if (io && result.releasedIds.length > 0) {
-//     io.to(`event_${eventId}`).emit('seatStatusChanged', {
-//       eventId,
-//       seats: result.releasedIds,
-//       status: 'AVAILABLE'
-//     });
-//   }
+  // Báo hiệu real-time: các ghế này đã về AVAILABLE
+  const io = req.app.get('io');
+  if (io && result.releasedIds.length > 0) {
+    io.to(`event_${eventId}`).emit('seatStatusChanged', {
+      eventId,
+      seats: result.releasedIds,
+      status: 'AVAILABLE'
+    });
+  }
 
-//   ResponseFactory.success(
-//     res,
-//     { releasedCount: result.releasedIds.length },
-//     result.releasedIds.length > 0
-//       ? `Đã trả ${result.releasedIds.length} ghế thành công.`
-//       : 'Không có ghế nào đang giữ để trả.'
-//   );
-// }); 
-
+  ResponseFactory.success(
+    res,
+    { releasedCount: result.releasedIds.length },
+    result.releasedIds.length > 0
+      ? `Đã trả ${result.releasedIds.length} ghế thành công.`
+      : 'Không có ghế nào đang giữ để trả.'
+  );
+});
 /**
  * POST /api/Booking/return-seats
  * Trả một số ghế cụ thể về AVAILABLE (dùng cho auto-hold flow khi bỏ chọn ghế đơn lẻ).
