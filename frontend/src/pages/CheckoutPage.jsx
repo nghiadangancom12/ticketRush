@@ -119,9 +119,10 @@ export default function CheckoutPage() {
       isCompletedRef.current = true;
       clearInterval(heartbeatRef.current);
       clearInterval(countdownRef.current);
+      localStorage.removeItem('checkoutEventId');
+      localStorage.removeItem('seatSelectionExpiry');
       setOrderInfo(res.data.data?.order);
       setSuccess(true);
-      localStorage.removeItem('checkoutEventId');
     } catch (err) {
       setErrorMsg(err.response?.data?.message || 'Có lỗi xảy ra khi thanh toán.');
     } finally {
@@ -165,8 +166,8 @@ export default function CheckoutPage() {
           </div>
         </div>
         <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'center' }}>
-          <button className="btn btn-primary" onClick={() => navigate('/me')}>Xem lịch sử đặt vé</button>
-          <button className="btn btn-outline" onClick={() => navigate('/')}>Trang chủ</button>
+          <button className="btn btn-primary" onClick={() => navigate('/me', { replace: true })}>Xem lịch sử đặt vé</button>
+          <button className="btn btn-outline" onClick={() => navigate('/', { replace: true })}>Trang chủ</button>
         </div>
       </div>
     </div>

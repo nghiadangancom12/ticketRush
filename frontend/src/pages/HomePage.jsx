@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 
 import { API_BASE } from '../config';
@@ -93,14 +93,12 @@ export default function HomePage() {
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [heroSearch, setHeroSearch] = useState('');
+  const [q, setQ] = useState('');
   const [heroIdx, setHeroIdx] = useState(0);
   const [filterCategory, setFilterCategory] = useState('');
   const [showFilterMenu, setShowFilterMenu] = useState(false);
-  const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const filterRef = useRef(null);
-
-  const q = searchParams.get('q') || '';
 
   useEffect(() => {
     Promise.allSettled([
@@ -108,7 +106,7 @@ export default function HomePage() {
       axios.get(`${API}/categories`),
     ]).then(([evRes, catRes]) => {
       if (evRes.status === 'fulfilled') setEvents(evRes.value.data.data || []);
-      if (catRes.status === 'fulfilled') setCategories(catRes.value.data.data || []);
+      if (catRes.status === 'fulfilled') setCategories(catRes.value.data.data?.data || []);
     }).finally(() => setLoading(false));
   }, []);
 
@@ -137,10 +135,12 @@ export default function HomePage() {
 
   const goToEvent = (id) => navigate(`/event/${id}/queue`);
 
+  const doHeroSearch = () => {
+    setQ(heroSearch.trim());
+  };
+
   const handleHeroSearch = (e) => {
-    if (e.key === 'Enter' && heroSearch.trim()) {
-      navigate(`/?q=${encodeURIComponent(heroSearch.trim())}`);
-    }
+    if (e.key === 'Enter') doHeroSearch();
   };
 
   return (
@@ -242,14 +242,14 @@ export default function HomePage() {
 
         {/* Search overlay */}
         <div className="hero-search" style={{
-          position: 'absolute', bottom: '2rem', right: '3rem', zIndex: 1,
-          display: 'flex', gap: '0.625rem',
-          background: 'rgba(255,255,255,0.07)', backdropFilter: 'blur(16px)',
-          border: '1px solid rgba(255,255,255,0.1)', borderRadius: 12,
-          padding: '0.75rem', width: 380,
+          position: 'absolute', bottom: '2.5rem', left: '50%', transform: 'translateX(-50%)', zIndex: 1,
+          display: 'flex', alignItems: 'center', gap: '0.75rem',
+          background: 'rgba(10,10,30,0.65)', backdropFilter: 'blur(20px)',
+          border: '1px solid rgba(255,255,255,0.13)', borderRadius: 16,
+          padding: '1rem 1.25rem', width: '100%', maxWidth: 640,
         }}>
           <div style={{ flex: 1, position: 'relative' }}>
-            <svg style={{ position: 'absolute', left: '0.7rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', pointerEvents: 'none' }} width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+            <svg style={{ position: 'absolute', left: '0.875rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', pointerEvents: 'none' }} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
               <circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" />
             </svg>
             <input
@@ -258,14 +258,21 @@ export default function HomePage() {
               value={heroSearch}
               onChange={e => setHeroSearch(e.target.value)}
               onKeyDown={handleHeroSearch}
-              style={{ width: '100%', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 7, padding: '0.5rem 0.75rem 0.5rem 2.2rem', color: 'white', fontSize: '0.85rem', outline: 'none', fontFamily: 'inherit' }}
+              style={{ width: '100%', background: 'rgba(0,0,0,0.35)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 10, padding: '0.7rem 1rem 0.7rem 2.75rem', color: 'white', fontSize: '0.95rem', outline: 'none', fontFamily: 'inherit' }}
             />
           </div>
+          <button
+            className="btn btn-primary"
+            style={{ padding: '0.65rem 1.25rem', fontSize: '0.88rem', whiteSpace: 'nowrap', flexShrink: 0 }}
+            onClick={doHeroSearch}
+          >
+            Tìm kiếm
+          </button>
           {/* Bá»™ lá»c â€” category dropdown */}
-          <div ref={filterRef} style={{ position: 'relative' }}>
+          <div ref={filterRef} style={{ position: 'relative', flexShrink: 0 }}>
             <button
               className="btn btn-ghost"
-              style={{ padding: '0.45rem 0.875rem', fontSize: '0.78rem', gap: '0.35rem', background: filterCategory ? 'rgba(124,58,237,0.25)' : undefined, borderColor: filterCategory ? 'rgba(124,58,237,0.5)' : undefined }}
+              style={{ padding: '0.6rem 0.875rem', fontSize: '0.82rem', gap: '0.35rem', whiteSpace: 'nowrap', background: filterCategory ? 'rgba(124,58,237,0.25)' : undefined, borderColor: filterCategory ? 'rgba(124,58,237,0.5)' : undefined }}
               onClick={() => setShowFilterMenu(v => !v)}
             >
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" /></svg>

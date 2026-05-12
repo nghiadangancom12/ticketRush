@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 
@@ -14,6 +14,10 @@ export default function AuthPage() {
   const [successMsg, setSuccessMsg] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    if (localStorage.getItem('token')) navigate('/', { replace: true });
+  }, []);
 
   const set = (field) => (e) => setFormData(prev => ({ ...prev, [field]: e.target.value }));
 
@@ -54,7 +58,7 @@ export default function AuthPage() {
         localStorage.setItem('userRole', user.role);
         localStorage.setItem('userName', user.full_name);
         if (user.avatar_url) localStorage.setItem('avatarUrl', user.avatar_url);
-        navigate('/');
+        navigate('/', { replace: true });
       } else {
         await axios.post(`${API}/auth/register`, {
           email: formData.email,
