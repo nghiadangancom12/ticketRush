@@ -1,13 +1,13 @@
 const catchAsync = require('../errorHandling/catchAsync');
 const ResponseFactory = require('../../utils/ResponseFactory');
 const bookingService = require('./BookingService');
+const AppError = require('../errorHandling/AppError'); // Fix 1: Thêm import AppError
 
 exports.holdSeats = catchAsync(async (req, res) => {
   const { seatIds, eventId } = req.body;
   const lockedIds = await bookingService.holdSeats(req.user.id, eventId, seatIds);
 
   // Lên lịch nhả ghế tự động sau 60 giây nếu chưa thanh toán
-  // Tách ra khỏi transaction để job chỉ được đăng ký khi DB đã commit thành công
   await bookingService.scheduleRelease(req.user.id, eventId, lockedIds);
 
   const io = req.app.get('io');
@@ -41,13 +41,11 @@ exports.checkout = catchAsync(async (req, res) => {
 /**
  * POST /api/Booking/return
  * Trả toàn bộ ghế đang LOCKED về AVAILABLE + giải phóng slot queue.
- * Gọi khi user bấm Hủy / Quay Lại trên trang Checkout.
  */
 exports.returnSeats = catchAsync(async (req, res) => {
   const { eventId } = req.body;
   const result = await bookingService.returnSeats(req.user.id, eventId);
 
-  // Báo hiệu real-time: các ghế này đã về AVAILABLE
   const io = req.app.get('io');
   if (io && result.releasedIds.length > 0) {
     io.to(`event_${eventId}`).emit('seatStatusChanged', {
@@ -64,26 +62,4 @@ exports.returnSeats = catchAsync(async (req, res) => {
       ? `Đã trả ${result.releasedIds.length} ghế thành công.`
       : 'Không có ghế nào đang giữ để trả.'
   );
-});
-/**
- * POST /api/Booking/return-seats
- * Trả một số ghế cụ thể về AVAILABLE (dùng cho auto-hold flow khi bỏ chọn ghế đơn lẻ).
- */
-exports.returnSpecificSeats = catchAsync(async (req, res) => {
-  const { eventId, seatIds } = req.body;
-  if (!eventId || !Array.isArray(seatIds) || seatIds.length === 0) {
-    return new AppError('Dữ liệu không hợp lệ', 400);
-  }
-  const result = await bookingService.returnSpecificSeats(req.user.id, eventId, seatIds);
-
-  const io = req.app.get('io');
-  if (io && seatIds.length > 0) {
-    io.to(`event_${eventId}`).emit('seatStatusChanged', {
-      eventId,
-      seats: seatIds,
-      status: 'AVAILABLE'
-    });
-  }
-
-  ResponseFactory.success(res, { releasedCount: result.releasedCount }, 'Đã trả ghế thành công.');
 });

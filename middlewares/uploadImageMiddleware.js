@@ -23,7 +23,7 @@ const imageFileFilter = (req, file, cb) => {
 const upload = multer({
   storage: multer.memoryStorage(), // Không lưu xuống ổ cứng, giữ nguyên trong RAM
   limits: {
-    fileSize: 5 * 1024 * 1024, // Giới hạn 5MB
+    fileSize: 7 * 1024 * 1024, // Giới hạn 5MB
   },
   fileFilter: imageFileFilter,
 });
@@ -47,7 +47,7 @@ exports.uploadSingleImage = (fieldName = 'image') =>
       if (err instanceof multer.MulterError) {
         // Lỗi từ nội bộ Multer (vd: vượt giới hạn dung lượng)
         if (err.code === 'LIMIT_FILE_SIZE') {
-          return next(new AppError('File ảnh quá lớn! Giới hạn tối đa là 5MB.', 400));
+          return next(new AppError('File ảnh quá lớn! Giới hạn tối đa là 7MB.', 400));
         }
         return next(new AppError(`Lỗi upload: ${err.message}`, 400));
       }

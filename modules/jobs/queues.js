@@ -12,7 +12,14 @@ function createNoopQueue(name) {
     async close() {},
   };
 }
-
+// Cấu hình mặc định để tối ưu RAM cho Redis
+const defaultQueueOptions = {
+  connection: redisConnection,
+  defaultJobOptions: {
+    removeOnComplete: true, // Xóa sạch job khỏi RAM ngay khi thành công
+    removeOnFail: 1000,     // Chỉ giữ lại tối đa 1000 job lỗi gần nhất để debug
+  },
+};
 /**
  * Hàng đợi nhả ghế tự động (Delayed Jobs).
  * Producer: BookingService.scheduleRelease()
@@ -20,7 +27,7 @@ function createNoopQueue(name) {
  */
 const seatReleaseQueue = redisDisabled
   ? createNoopQueue('seat-release')
-  : new Queue('seat-release', { connection: redisConnection });
+  : new Queue('seat-release', defaultQueueOptions);
 
 /**
  * Hàng đợi gửi email vé (Background Jobs).
@@ -29,7 +36,7 @@ const seatReleaseQueue = redisDisabled
  */
 const emailQueue = redisDisabled
   ? createNoopQueue('email-service')
-  : new Queue('email-service', { connection: redisConnection });
+  : new Queue('email-service', { connection: defaultQueueOptions });
 
 module.exports = {
   seatReleaseQueue,
