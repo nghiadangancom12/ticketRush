@@ -589,6 +589,43 @@ paths:
         '401':
           description: Chưa xác thực
 
+  /api/users/me/updatePassword:
+    patch:
+      tags: [Users]
+      summary: Đổi mật khẩu
+      description: Người dùng đang đăng nhập có thể cập nhật mật khẩu mới.
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - currentPassword
+                - newPassword
+                - newPasswordConfirm
+              properties:
+                currentPassword:
+                  type: string
+                  example: "oldpassword123"
+                newPassword:
+                  type: string
+                  minLength: 6
+                  example: "newpassword123"
+                newPasswordConfirm:
+                  type: string
+                  example: "newpassword123"
+      responses:
+        '200':
+          description: Cập nhật mật khẩu thành công
+        '400':
+          description: Dữ liệu đầu vào không hợp lệ hoặc mật khẩu xác nhận không khớp
+        '401':
+          description: Chưa xác thực hoặc mật khẩu hiện tại không đúng
+
   /api/users/{userId}/grant-admin:
     patch:
       tags: [Users]

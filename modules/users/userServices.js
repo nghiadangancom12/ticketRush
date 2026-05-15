@@ -1,6 +1,7 @@
 const userRepository = require('./usersRepository');
 const AppError = require('../errorHandling/AppError');
 const PrismaApiFeatures = require('../../utils/PrismaApiFeatures');
+const bcrypt = require('bcrypt');
 
 class UserService {
   /**
@@ -112,6 +113,22 @@ class UserService {
     await userRepository.softDelete(userId);
   }
 
+  async updatePassword(userId, currentPassword, newPassword) {
+    const user = await userRepository.findById(userId);
+    if (!user) throw new AppError('Người dùng không tồn tại', 404);
+
+    const isMatch = await bcrypt.compare(currentPassword, user.password);
+    if (!isMatch) throw new AppError('Mật khẩu hiện tại không đúng!', 401);
+
+    const hashedNewPassword = await bcrypt.hash(newPassword, 10);
+    const updated = await userRepository.update(userId, { 
+      password: hashedNewPassword, 
+      password_changed_at: new Date() 
+    });
+
+    const { password, ...safeUser } = updated;
+    return safeUser;
+  }
 }
 
 module.exports = new UserService();

@@ -1,7 +1,6 @@
 const catchAsync = require('../errorHandling/catchAsync');
 const ResponseFactory = require('../../utils/ResponseFactory');
 const bookingService = require('./BookingService');
-const AppError = require('../errorHandling/AppError'); // Fix 1: Thêm import AppError
 
 exports.holdSeats = catchAsync(async (req, res) => {
   const { seatIds, eventId } = req.body;

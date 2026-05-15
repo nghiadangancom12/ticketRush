@@ -116,4 +116,20 @@ exports.getAllUserSchema = z.object({
           .max(100, 'limit tối đa là 100')
       ),
   }),
-});
+});
+
+// Schema cho API Đổi mật khẩu (PATCH /me/updatePassword)
+exports.updatePasswordSchema = z.object({
+  body: z.object({
+    currentPassword: z.string({ required_error: 'Vui lòng nhập mật khẩu hiện tại!' }),
+    newPassword: z
+      .string({ required_error: 'Vui lòng nhập mật khẩu mới!' })
+      .min(6, 'Mật khẩu mới phải có ít nhất 6 ký tự!')
+      .max(255, 'Mật khẩu mới không được vượt quá 255 ký tự!'),
+    newPasswordConfirm: z.string({ required_error: 'Vui lòng nhập lại mật khẩu mới!' })
+  }).refine((data) => data.newPassword === data.newPasswordConfirm, {
+    message: 'Mật khẩu xác nhận không khớp!',
+    path: ['newPasswordConfirm']
+  })
+});
+

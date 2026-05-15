@@ -25,6 +25,14 @@ router.patch(
   usersController.updateAvatar // Controller: Sharp resize/compress → lưu ổ cứng → update DB
 );
 
+// PATCH /me/updatePassword — Update user password
+router.patch(
+  '/me/updatePassword',
+  verifyToken,
+  validate(usersSchema.updatePasswordSchema),
+  usersController.updatePassword
+);
+
 module.exports = router;
 
 

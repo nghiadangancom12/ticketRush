@@ -81,6 +81,12 @@ exports.updateAvatar = catchAsync(async (req, res) => {
   ResponseFactory.success(res, updatedUser, 'Ảnh đại diện đã được cập nhật!');
 });
 
+exports.updatePassword = catchAsync(async (req, res) => {
+  const { currentPassword, newPassword } = req.body;
+  await userService.updatePassword(req.user.id, currentPassword, newPassword);
+  ResponseFactory.success(res, null, 'Cập nhật mật khẩu thành công');
+});
+
 module.exports = exports;
 
 

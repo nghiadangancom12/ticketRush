@@ -17,7 +17,7 @@ class BookingService {
             const event = await bookingRepo.getEventById(eventId, tx);
             if (!event) throw new AppError('Sự kiện không tồn tại.', 404);
 
-            // 🌟 3. FIX LỖI ĐẾM VÉ: Kiểm tra giới hạn vé
+            // 🌟 3. LỖI ĐẾM VÉ: Kiểm tra giới hạn vé
             const otherSeatsUserHolds = await bookingRepo.countOtherSeatsHeld(userId, eventId, uniqueSeatIds, tx);
             if (otherSeatsUserHolds + uniqueSeatIds.length > 4) {
                 throw new AppError('Bạn chỉ được giữ/mua tổng cộng tối đa 4 vé trong 1 sự kiện.', 400);

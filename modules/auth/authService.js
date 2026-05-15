@@ -5,6 +5,7 @@ const authRepository = require('./authRepository');
 const AppError = require('../errorHandling/AppError');
 const EmailService = require('../../utils/email.js');
 
+
 class AuthService {
   _signToken(id, role) {
     if (!process.env.JWT_SECRET) throw new Error('JWT_SECRET is missing');
