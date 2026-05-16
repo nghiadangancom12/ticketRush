@@ -83,8 +83,9 @@ export default function CheckoutPage() {
         if (err.response?.status === 410) {
           clearInterval(heartbeatRef.current);
           clearInterval(countdownRef.current);
-          setHoldPhase('failed');
-          setErrorMsg('Phiên giao dịch đã hết hạn. Vui lòng quay lại hàng chờ.');
+          isCompletedRef.current = true;
+          localStorage.removeItem('checkoutEventId');
+          navigate(`/event/${eventId}/queue`, { replace: true });
         }
       }
     };
@@ -92,6 +93,40 @@ export default function CheckoutPage() {
     heartbeatRef.current = setInterval(ping, 12000);
     return () => clearInterval(heartbeatRef.current);
   }, [eventId, token]);
+
+  // Back button guard — chỉ active khi đang giữ ghế thành công
+  useEffect(() => {
+    if (holdPhase !== 'ready') return;
+
+    window.history.pushState(null, '');
+
+    const handlePopState = () => {
+      if (isCompletedRef.current) return;
+
+      window.history.pushState(null, '');
+
+      const ok = window.confirm(
+        'Nếu quay lại, toàn bộ ghế đang giữ sẽ bị hủy và bạn phải xếp hàng lại từ đầu.\n\nBạn có chắc muốn quay lại không?'
+      );
+
+      if (ok) {
+        isCompletedRef.current = true;
+        clearInterval(heartbeatRef.current);
+        clearInterval(countdownRef.current);
+        fetch(`${API}/Booking/return`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ eventId }),
+          keepalive: true,
+        }).catch(() => {});
+        localStorage.removeItem('checkoutEventId');
+        navigate(`/event/${eventId}`, { replace: true });
+      }
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, [holdPhase]);
 
   // Cleanup: nhả ghế nếu rời trang mà chưa hoàn tất
   useEffect(() => {

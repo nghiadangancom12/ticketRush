@@ -1,11 +1,13 @@
 import { BrowserRouter, Routes, Route, Link, useNavigate, useLocation } from 'react-router-dom';
 import HomePage from './pages/HomePage';
 import QueuePage from './pages/QueuePage';
+import EventInfoPage from './pages/EventInfoPage';
 import EventDetailPage from './pages/EventDetailPage';
 import CheckoutPage from './pages/CheckoutPage';
 import AuthPage from './pages/AuthPage';
 import AdminPage from './pages/AdminPage';
 import ProfilePage from './pages/ProfilePage';
+import ResetPasswordPage from './pages/ResetPasswordPage';
 import { API_BASE } from './config';
 
 function Navigation() {
@@ -84,8 +86,10 @@ function App() {
         <Route path="/auth" element={<AuthPage />} />
         <Route path="/admin" element={<AdminPage />} />
         <Route path="/me" element={<ProfilePage />} />
+        <Route path="/reset-password/:token" element={<ResetPasswordPage />} />
         <Route path="/event/:id/queue" element={<QueuePage />} />
-        <Route path="/event/:id" element={<EventDetailPage />} />
+        <Route path="/event/:id/seats" element={<EventDetailPage />} />
+        <Route path="/event/:id" element={<EventInfoPage />} />
         <Route path="/checkout" element={<CheckoutPage />} />
       </Routes>
     </BrowserRouter>

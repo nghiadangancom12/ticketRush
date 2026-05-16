@@ -20,7 +20,7 @@ function EventCard({ event, idx, onClick }) {
   const month = d.getMonth() + 1;
   const day = d.getDate();
   const minPrice = event.zones?.length > 0 ? Math.min(...event.zones.map(z => Number(z.price))) : 0;
-  const badge = event.categories?.name || 'Sá»° KIá»†N';
+  const badge = event.categories?.name || 'Sự Kiện';
 
   const gradients = [
     'linear-gradient(135deg, #1e1b4b, #312e81)',
@@ -133,7 +133,7 @@ export default function HomePage() {
     return matchQ && matchCat;
   });
 
-  const goToEvent = (id) => navigate(`/event/${id}/queue`);
+  const goToEvent = (id) => navigate(`/event/${id}`);
 
   const doHeroSearch = () => {
     setQ(heroSearch.trim());
@@ -316,7 +316,7 @@ export default function HomePage() {
                     key={cat.id}
                     onClick={() => setFilterCategory(isActive ? '' : cat.id)}
                     style={{
-                      height: 130, borderRadius: 12, background: g.bg,
+                      height: 130, borderRadius: 12, background: cat.image_url ? '#0a0a14' : g.bg,
                       display: 'flex', alignItems: 'flex-end', padding: '1rem',
                       cursor: 'pointer', border: `2px solid ${isActive ? 'rgba(255,255,255,0.5)' : 'var(--border)'}`,
                       position: 'relative', overflow: 'hidden', transition: 'transform 0.2s, box-shadow 0.2s',
@@ -325,7 +325,10 @@ export default function HomePage() {
                     onMouseEnter={e => { e.currentTarget.style.transform = 'scale(1.02)'; e.currentTarget.style.boxShadow = '0 8px 24px rgba(0,0,0,0.3)'; }}
                     onMouseLeave={e => { e.currentTarget.style.transform = 'scale(1)'; e.currentTarget.style.boxShadow = isActive ? '0 0 0 2px rgba(124,58,237,0.5)' : 'none'; }}
                   >
-                    <div style={{ position: 'absolute', inset: 0, background: g.overlay }} />
+                    {cat.image_url && (
+                      <img src={cat.image_url} alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+                    )}
+                    <div style={{ position: 'absolute', inset: 0, background: cat.image_url ? 'linear-gradient(to top, rgba(0,0,0,0.72) 0%, rgba(0,0,0,0.2) 100%)' : g.overlay }} />
                     <div style={{ position: 'relative', zIndex: 1 }}>
                       <span style={{ fontWeight: 700, fontSize: '1rem', textShadow: '0 1px 8px rgba(0,0,0,0.8)' }}>
                         {cat.name}

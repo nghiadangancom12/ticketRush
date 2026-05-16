@@ -49,7 +49,7 @@ export default function QueuePage() {
       stopPolling(); setStatus('allowed');
       const expireAt = Date.now() + 60 * 1000;
       localStorage.setItem('seatSelectionExpiry', String(expireAt));
-      setTimeout(() => navigate(`/event/${eventId}`, { state: { expireAt } }), 800);
+      setTimeout(() => navigate(`/event/${eventId}/seats`, { state: { expireAt } }), 800);
     } else {
       setStatus('in_queue'); setPosition(d.position);
     }
@@ -82,7 +82,7 @@ export default function QueuePage() {
         startCountdown(data.expireAt);
         localStorage.setItem('seatSelectionExpiry', String(data.expireAt));
       }
-      setTimeout(() => navigate(`/event/${eventId}`, { state: { expireAt: data.expireAt } }), 1200);
+      setTimeout(() => navigate(`/event/${eventId}/seats`, { state: { expireAt: data.expireAt } }), 1200);
     });
 
     return () => { socket.disconnect(); stopPolling(); if (countdownRef.current) clearInterval(countdownRef.current); };

@@ -66,7 +66,16 @@ const icons = {
 };
 
 /* ─── MODULE-LEVEL: CategoriesView (stable ref → no focus loss) ─── */
-function CategoriesView({ allCategories, newCatForm, setNewCatForm, addingCat, handleAddCategory, handleDeleteCategory }) {
+function CategoriesView({ allCategories, newCatForm, setNewCatForm, addingCat, handleAddCategory, handleDeleteCategory, handleUpdateCategoryImage }) {
+  const [uploadingId, setUploadingId] = useState(null);
+
+  const handleImageChange = async (id, file) => {
+    if (!file) return;
+    setUploadingId(id);
+    await handleUpdateCategoryImage(id, file);
+    setUploadingId(null);
+  };
+
   return (
     <div>
       <div style={{ marginBottom: '1.5rem' }}>
@@ -95,6 +104,22 @@ function CategoriesView({ allCategories, newCatForm, setNewCatForm, addingCat, h
           </div>
         </div>
         <div style={{ display: 'flex', alignItems: 'flex-end', gap: '1rem', flexWrap: 'wrap' }}>
+          <div className="form-group" style={{ margin: 0, flex: 1, minWidth: 200 }}>
+            <label className="form-label">Ảnh thể loại</label>
+            {newCatForm.imagePreview && (
+              <img src={newCatForm.imagePreview} alt="preview" style={{ width: '100%', height: 80, objectFit: 'cover', borderRadius: 6, marginBottom: '0.5rem', border: '1px solid var(--border)' }} />
+            )}
+            <input
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              className="form-input"
+              style={{ padding: '0.375rem', cursor: 'pointer' }}
+              onChange={e => {
+                const f = e.target.files[0];
+                if (f) setNewCatForm(prev => ({ ...prev, imageFile: f, imagePreview: URL.createObjectURL(f) }));
+              }}
+            />
+          </div>
           <button className="btn btn-primary" style={{ fontSize: '0.85rem', alignSelf: 'flex-end' }}
             onClick={handleAddCategory} disabled={addingCat || !newCatForm.name.trim()}>
             {addingCat ? 'Đang tạo...' : '+ Thêm thể loại'}
@@ -108,10 +133,25 @@ function CategoriesView({ allCategories, newCatForm, setNewCatForm, addingCat, h
           ? <div style={{ gridColumn: '1/-1', textAlign: 'center', color: 'var(--text-muted)', padding: '3rem', background: 'var(--bg-card)', borderRadius: 12, border: '1px solid var(--border)' }}>Chưa có thể loại nào.</div>
           : allCategories.map(cat => (
             <div key={cat.id} style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 12, overflow: 'hidden' }}>
-              {cat.image_url
-                ? <img src={cat.image_url} alt={cat.name} style={{ width: '100%', height: 120, objectFit: 'cover' }} />
-                : <div style={{ width: '100%', height: 120, background: 'linear-gradient(135deg,rgba(124,58,237,.3),rgba(6,182,212,.2))', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '2.5rem' }}>🏷</div>
-              }
+              <label style={{ display: 'block', position: 'relative', cursor: 'pointer' }} title="Nhấn để đổi ảnh">
+                {cat.image_url
+                  ? <img src={cat.image_url} alt={cat.name} style={{ width: '100%', height: 120, objectFit: 'cover', display: 'block' }} />
+                  : <div style={{ width: '100%', height: 120, background: 'linear-gradient(135deg,rgba(124,58,237,.3),rgba(6,182,212,.2))', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '2.5rem' }}>🏷</div>
+                }
+                <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: uploadingId === cat.id ? 1 : 0, transition: 'opacity 0.15s' }}
+                  onMouseEnter={e => { if (uploadingId !== cat.id) e.currentTarget.style.opacity = 1; }}
+                  onMouseLeave={e => { if (uploadingId !== cat.id) e.currentTarget.style.opacity = 0; }}>
+                  {uploadingId === cat.id
+                    ? <span className="spinner" style={{ width: 22, height: 22, borderWidth: 2, borderColor: 'rgba(255,255,255,0.3)', borderTopColor: '#fff' }} />
+                    : <span style={{ color: '#fff', fontSize: '0.78rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                        Đổi ảnh
+                      </span>
+                  }
+                </div>
+                <input type="file" accept="image/jpeg,image/png,image/webp" style={{ display: 'none' }} disabled={uploadingId === cat.id}
+                  onChange={e => { const f = e.target.files[0]; e.target.value = ''; if (f) handleImageChange(cat.id, f); }} />
+              </label>
               <div style={{ padding: '0.875rem' }}>
                 <div style={{ fontWeight: 700, fontSize: '0.95rem', marginBottom: '0.25rem' }}>{cat.name}</div>
                 <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', marginBottom: '0.75rem', minHeight: '1.1em' }}>{cat.description || '—'}</div>
@@ -475,10 +515,16 @@ export default function AdminPage() {
   const [events, setEvents] = useState([]);
   const [orders, setOrders] = useState([]);
   const [ordersLoading, setOrdersLoading] = useState(false);
+  const [ordersPage, setOrdersPage] = useState(1);
+  const [ordersTotalPages, setOrdersTotalPages] = useState(1);
+  const [ordersTotal, setOrdersTotal] = useState(0);
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [orderDetailLoading, setOrderDetailLoading] = useState(false);
   const [users, setUsers] = useState([]);
   const [usersLoading, setUsersLoading] = useState(false);
+  const [usersPage, setUsersPage] = useState(1);
+  const [usersTotalPages, setUsersTotalPages] = useState(1);
+  const [usersTotal, setUsersTotal] = useState(0);
   const [categoryAnalytics, setCategoryAnalytics] = useState(null);
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState('');
@@ -548,11 +594,15 @@ export default function AdminPage() {
     } catch { setCategoryAnalytics([]); }
   };
 
-  const fetchOrders = async () => {
+  const fetchOrders = async (page = 1) => {
     setOrdersLoading(true);
     try {
-      const res = await axios.get(`${API}/orders?limit=50`, { headers: authHeader() });
-      setOrders(res.data.data?.data || res.data.data?.orders || []);
+      const res = await axios.get(`${API}/orders?limit=10&page=${page}`, { headers: authHeader() });
+      const d = res.data.data;
+      setOrders(d?.data || []);
+      setOrdersPage(d?.page || 1);
+      setOrdersTotalPages(d?.totalPages || 1);
+      setOrdersTotal(d?.total || 0);
     } catch { setOrders([]); } finally { setOrdersLoading(false); }
   };
 
@@ -564,11 +614,15 @@ export default function AdminPage() {
     } catch { setSelectedOrder(null); } finally { setOrderDetailLoading(false); }
   };
 
-  const fetchUsers = async () => {
+  const fetchUsers = async (page = 1) => {
     setUsersLoading(true);
     try {
-      const res = await axios.get(`${API}/users`, { headers: authHeader() });
-      setUsers(res.data.data?.data || res.data.data?.users || []);
+      const res = await axios.get(`${API}/users?limit=10&page=${page}`, { headers: authHeader() });
+      const d = res.data.data;
+      setUsers(d?.data || d?.users || []);
+      setUsersPage(d?.page || 1);
+      setUsersTotalPages(d?.totalPages || 1);
+      setUsersTotal(d?.total || 0);
     } catch { setUsers([]); } finally { setUsersLoading(false); }
   };
 
@@ -609,14 +663,14 @@ export default function AdminPage() {
   const handleGrantAdmin = async (userId) => {
     try {
       await axios.patch(`${API}/users/${userId}/grant-admin`, {}, { headers: authHeader() });
-      fetchUsers();
+      fetchUsers(usersPage);
     } catch (err) { alert(err.response?.data?.message || 'Lỗi.'); }
   };
 
   const handleRevokeAdmin = async (userId) => {
     try {
       await axios.patch(`${API}/users/${userId}/revoke-admin`, {}, { headers: authHeader() });
-      fetchUsers();
+      fetchUsers(usersPage);
     } catch (err) { alert(err.response?.data?.message || 'Lỗi.'); }
   };
 
@@ -624,13 +678,13 @@ export default function AdminPage() {
     if (!window.confirm('Xác nhận xóa user này?')) return;
     try {
       await axios.delete(`${API}/users/${userId}`, { headers: authHeader() });
-      fetchUsers();
+      fetchUsers(usersPage);
     } catch (err) { alert(err.response?.data?.message || 'Lỗi.'); }
   };
 
   useEffect(() => { if (activeView === 'analytics') { fetchAnalytics(); fetchCategoryAnalytics(); } }, [activeView]);
-  useEffect(() => { if (activeView === 'tickets') fetchOrders(); }, [activeView]);
-  useEffect(() => { if (activeView === 'users') fetchUsers(); }, [activeView]);
+  useEffect(() => { if (activeView === 'tickets') fetchOrders(1); }, [activeView]);
+  useEffect(() => { if (activeView === 'users') fetchUsers(1); }, [activeView]);
 
   const handleQueueToggle = async (eventId, turnOn) => {
     setQueueLoading(eventId);
@@ -711,6 +765,20 @@ export default function AdminPage() {
       await axios.delete(`${API}/categories/${id}`, { headers: authHeader() });
       setAllCategories(prev => prev.filter(c => c.id !== id));
     } catch (err) { alert(err.response?.data?.message || 'Lỗi xóa thể loại'); }
+  };
+
+  const handleUpdateCategoryImage = async (id, file) => {
+    const fd = new FormData();
+    fd.append('image', file);
+    try {
+      const res = await axios.patch(`${API}/categories/${id}/image`, fd, {
+        headers: { ...authHeader(), 'Content-Type': 'multipart/form-data' },
+      });
+      const updated = res.data.data;
+      setAllCategories(prev => prev.map(c => c.id === id ? { ...c, image_url: updated.image_url } : c));
+    } catch (err) {
+      alert(err.response?.data?.message || 'Lỗi cập nhật ảnh thể loại');
+    }
   };
 
   const handleCreateEvent = async (e, imageFile) => {
@@ -1073,33 +1141,41 @@ export default function AdminPage() {
         </div>
 
       {/* Category analytics */}
-      {categoryAnalytics && categoryAnalytics.length > 0 && (
-        <div style={{ marginTop: '1.25rem', background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 12, padding: '1.5rem' }}>
-          <h3 style={{ fontSize: '0.95rem', fontWeight: 700, marginBottom: '1.25rem' }}>Phân tích theo danh mục</h3>
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.84rem' }}>
-              <thead>
-                <tr style={{ borderBottom: '1px solid var(--border)' }}>
-                  <th style={{ textAlign: 'left', padding: '0.5rem 0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>Danh mục</th>
-                  <th style={{ textAlign: 'left', padding: '0.5rem 0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>Nhóm tuổi</th>
-                  <th style={{ textAlign: 'left', padding: '0.5rem 0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>Giới tính</th>
-                  <th style={{ textAlign: 'right', padding: '0.5rem 0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>Số lượng</th>
-                </tr>
-              </thead>
-              <tbody>
-                {categoryAnalytics.map((row, i) => (
-                  <tr key={i} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
-                    <td style={{ padding: '0.5rem 0.75rem', fontWeight: 600 }}>{row.category_name || '—'}</td>
-                    <td style={{ padding: '0.5rem 0.75rem', color: 'var(--text-secondary)' }}>{row.age_group || '—'}</td>
-                    <td style={{ padding: '0.5rem 0.75rem', color: 'var(--text-secondary)' }}>{row.gender === 'MALE' ? 'Nam' : row.gender === 'FEMALE' ? 'Nữ' : row.gender || 'Other'}</td>
-                    <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', fontWeight: 700 }}>{Number(row.user_count || 0).toLocaleString()}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+      {allCategories.length > 0 && (() => {
+        const AGE_ORDER = ['<18', '18-24', '25-34', '35-44', '45+'];
+        const AGE_COLORS = { '<18': '#6366f1', '18-24': '#7c3aed', '25-34': '#06b6d4', '35-44': '#10b981', '45+': '#f59e0b' };
+
+        const byCategory = (categoryAnalytics || []).reduce((acc, row) => {
+          const cat = row.category_name || 'Khác';
+          const age = row.age_group || 'Khác';
+          if (!acc[cat]) acc[cat] = {};
+          acc[cat][age] = (acc[cat][age] || 0) + Number(row.user_count || 0);
+          return acc;
+        }, {});
+
+        return (
+          <div style={{ marginTop: '1.25rem', background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 12, padding: '1.5rem' }}>
+            <h3 style={{ fontSize: '0.95rem', fontWeight: 700, marginBottom: '1.25rem' }}>Phân tích theo danh mục</h3>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: '1rem' }}>
+              {allCategories.map(cat => {
+                const ageData = byCategory[cat.name] || {};
+                const items = AGE_ORDER.map(a => ({ label: a, value: ageData[a] || 0, color: AGE_COLORS[a] }));
+                const maxVal = Math.max(...items.map(i => i.value), 1);
+                const total = items.reduce((s, i) => s + i.value, 0);
+                return (
+                  <div key={cat.id} style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border)', borderRadius: 10, padding: '1rem' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '0.875rem' }}>
+                      <span style={{ fontWeight: 700, fontSize: '0.9rem' }}>{cat.name}</span>
+                      <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{total > 0 ? `${total} người` : 'Chưa có dữ liệu'}</span>
+                    </div>
+                    <BarChart items={items} max={maxVal} unit="người" />
+                  </div>
+                );
+              })}
+            </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
     </>
     );
   };
@@ -1112,7 +1188,7 @@ export default function AdminPage() {
           <h1 style={{ fontSize: '1.5rem', fontWeight: 800 }}>Quản lý Đơn hàng</h1>
           <p style={{ color: 'var(--text-secondary)', fontSize: '0.875rem' }}>Tất cả đơn đặt vé của hệ thống</p>
         </div>
-        <button className="btn btn-outline" style={{ fontSize: '0.8rem' }} onClick={fetchOrders}>↻ Tải lại</button>
+        <button className="btn btn-outline" style={{ fontSize: '0.8rem' }} onClick={() => fetchOrders(1)}>↻ Tải lại</button>
       </div>
 
       {ordersLoading ? (
@@ -1124,6 +1200,8 @@ export default function AdminPage() {
               <thead>
                 <tr style={{ borderBottom: '1px solid var(--border)', background: 'rgba(255,255,255,0.02)' }}>
                   <th style={{ textAlign: 'left', padding: '0.75rem 1rem', color: 'var(--text-muted)', fontWeight: 600 }}>Mã ĐH</th>
+                  <th style={{ textAlign: 'left', padding: '0.75rem 1rem', color: 'var(--text-muted)', fontWeight: 600 }}>Khách hàng</th>
+                  <th style={{ textAlign: 'left', padding: '0.75rem 1rem', color: 'var(--text-muted)', fontWeight: 600 }}>Sự kiện</th>
                   <th style={{ textAlign: 'right', padding: '0.75rem 1rem', color: 'var(--text-muted)', fontWeight: 600 }}>Tổng tiền</th>
                   <th style={{ textAlign: 'center', padding: '0.75rem 1rem', color: 'var(--text-muted)', fontWeight: 600 }}>Trạng thái</th>
                   <th style={{ textAlign: 'left', padding: '0.75rem 1rem', color: 'var(--text-muted)', fontWeight: 600 }}>Ngày đặt</th>
@@ -1141,6 +1219,15 @@ export default function AdminPage() {
                     onMouseLeave={e => e.currentTarget.style.background = selectedOrder?.id === order.id ? 'rgba(124,58,237,0.08)' : 'transparent'}
                   >
                     <td style={{ padding: '0.75rem 1rem', fontFamily: 'monospace', fontSize: '0.75rem', color: 'var(--text-muted)' }}>#{String(order.id).slice(-6)}</td>
+                    <td style={{ padding: '0.75rem 1rem' }}>
+                      <div style={{ fontWeight: 600, fontSize: '0.84rem' }}>{order.users?.full_name || '—'}</div>
+                      {order.users?.email && <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{order.users.email}</div>}
+                    </td>
+                    <td style={{ padding: '0.75rem 1rem', maxWidth: 200 }}>
+                      <div style={{ fontSize: '0.84rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {order.events?.title || '—'}
+                      </div>
+                    </td>
                     <td style={{ padding: '0.75rem 1rem', textAlign: 'right', fontWeight: 700 }}>{Number(order.total_amount || 0).toLocaleString('vi-VN')}đ</td>
                     <td style={{ padding: '0.75rem 1rem', textAlign: 'center' }}>
                       <span className={`badge ${order.status === 'PAID' ? 'badge-green' : order.status === 'PENDING' ? 'badge-yellow' : 'badge-gray'}`}>
@@ -1154,6 +1241,59 @@ export default function AdminPage() {
                 ))}
               </tbody>
             </table>
+            {/* Pagination */}
+            {ordersTotalPages > 1 && (
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.875rem 1rem', borderTop: '1px solid var(--border)', fontSize: '0.82rem' }}>
+                <span style={{ color: 'var(--text-muted)' }}>
+                  Trang {ordersPage}/{ordersTotalPages} · {ordersTotal} đơn hàng
+                </span>
+                <div style={{ display: 'flex', gap: '0.375rem' }}>
+                  <button
+                    className="btn btn-ghost"
+                    style={{ fontSize: '0.78rem', padding: '0.3rem 0.625rem' }}
+                    disabled={ordersPage <= 1 || ordersLoading}
+                    onClick={() => fetchOrders(1)}
+                  >«</button>
+                  <button
+                    className="btn btn-ghost"
+                    style={{ fontSize: '0.78rem', padding: '0.3rem 0.75rem' }}
+                    disabled={ordersPage <= 1 || ordersLoading}
+                    onClick={() => fetchOrders(ordersPage - 1)}
+                  >‹ Trước</button>
+                  {Array.from({ length: ordersTotalPages }, (_, i) => i + 1)
+                    .filter(p => p === 1 || p === ordersTotalPages || Math.abs(p - ordersPage) <= 1)
+                    .reduce((acc, p, i, arr) => {
+                      if (i > 0 && p - arr[i - 1] > 1) acc.push('...');
+                      acc.push(p);
+                      return acc;
+                    }, [])
+                    .map((p, i) => p === '...' ? (
+                      <span key={`ellipsis-${i}`} style={{ padding: '0.3rem 0.25rem', color: 'var(--text-muted)' }}>…</span>
+                    ) : (
+                      <button
+                        key={p}
+                        className="btn"
+                        style={{ fontSize: '0.78rem', padding: '0.3rem 0.625rem', minWidth: 32, background: p === ordersPage ? 'rgba(124,58,237,0.2)' : 'transparent', border: `1px solid ${p === ordersPage ? 'rgba(124,58,237,0.5)' : 'transparent'}`, color: p === ordersPage ? 'var(--purple)' : 'inherit' }}
+                        disabled={ordersLoading}
+                        onClick={() => fetchOrders(p)}
+                      >{p}</button>
+                    ))
+                  }
+                  <button
+                    className="btn btn-ghost"
+                    style={{ fontSize: '0.78rem', padding: '0.3rem 0.75rem' }}
+                    disabled={ordersPage >= ordersTotalPages || ordersLoading}
+                    onClick={() => fetchOrders(ordersPage + 1)}
+                  >Sau ›</button>
+                  <button
+                    className="btn btn-ghost"
+                    style={{ fontSize: '0.78rem', padding: '0.3rem 0.625rem' }}
+                    disabled={ordersPage >= ordersTotalPages || ordersLoading}
+                    onClick={() => fetchOrders(ordersTotalPages)}
+                  >»</button>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Order detail panel */}
@@ -1170,8 +1310,8 @@ export default function AdminPage() {
               ) : selectedOrder && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.875rem', fontSize: '0.84rem' }}>
                   <div><span style={{ color: 'var(--text-muted)' }}>Mã: </span><span style={{ fontFamily: 'monospace' }}>#{String(selectedOrder.id).slice(-8)}</span></div>
-                  <div><span style={{ color: 'var(--text-muted)' }}>Khách: </span><strong>{selectedOrder.user?.full_name || selectedOrder.user?.email || '—'}</strong></div>
-                  <div><span style={{ color: 'var(--text-muted)' }}>Sự kiện: </span>{selectedOrder.event?.title || '—'}</div>
+                  <div><span style={{ color: 'var(--text-muted)' }}>Khách: </span><strong>{selectedOrder.users?.full_name || selectedOrder.users?.email || '—'}</strong></div>
+                  <div><span style={{ color: 'var(--text-muted)' }}>Sự kiện: </span>{selectedOrder.events?.title || '—'}</div>
                   <div><span style={{ color: 'var(--text-muted)' }}>Tổng: </span><strong style={{ color: 'var(--success)' }}>{Number(selectedOrder.total_amount || 0).toLocaleString('vi-VN')}đ</strong></div>
                   <div>
                     <span style={{ color: 'var(--text-muted)' }}>Trạng thái: </span>
@@ -1185,8 +1325,8 @@ export default function AdminPage() {
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
                         {selectedOrder.tickets.map((t, i) => (
                           <div key={i} style={{ padding: '0.5rem 0.75rem', background: 'rgba(255,255,255,0.03)', borderRadius: 6, fontSize: '0.78rem' }}>
-                            <span style={{ fontWeight: 600 }}>{t.seat?.zone?.name || '—'}</span>
-                            {' · '}Hàng {t.seat?.row_label} - Ghế {t.seat?.seat_number}
+                            <span style={{ fontWeight: 600 }}>{t.seats?.zones?.name || '—'}</span>
+                            {' · '}Hàng {t.seats?.row_label} - Ghế {t.seats?.seat_number}
                           </div>
                         ))}
                       </div>
@@ -1209,7 +1349,7 @@ export default function AdminPage() {
           <h1 style={{ fontSize: '1.5rem', fontWeight: 800 }}>Quản lý Người dùng</h1>
           <p style={{ color: 'var(--text-secondary)', fontSize: '0.875rem' }}>Danh sách tất cả tài khoản trong hệ thống</p>
         </div>
-        <button className="btn btn-outline" style={{ fontSize: '0.8rem' }} onClick={fetchUsers}>↻ Tải lại</button>
+        <button className="btn btn-outline" style={{ fontSize: '0.8rem' }} onClick={() => fetchUsers(1)}>↻ Tải lại</button>
       </div>
 
       {usersLoading ? (
@@ -1266,6 +1406,59 @@ export default function AdminPage() {
               ))}
             </tbody>
           </table>
+          {/* Pagination */}
+          {usersTotalPages > 1 && (
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.875rem 1rem', borderTop: '1px solid var(--border)', fontSize: '0.82rem' }}>
+              <span style={{ color: 'var(--text-muted)' }}>
+                Trang {usersPage}/{usersTotalPages} · {usersTotal} người dùng
+              </span>
+              <div style={{ display: 'flex', gap: '0.375rem' }}>
+                <button
+                  className="btn btn-ghost"
+                  style={{ fontSize: '0.78rem', padding: '0.3rem 0.625rem' }}
+                  disabled={usersPage <= 1 || usersLoading}
+                  onClick={() => fetchUsers(1)}
+                >«</button>
+                <button
+                  className="btn btn-ghost"
+                  style={{ fontSize: '0.78rem', padding: '0.3rem 0.75rem' }}
+                  disabled={usersPage <= 1 || usersLoading}
+                  onClick={() => fetchUsers(usersPage - 1)}
+                >‹ Trước</button>
+                {Array.from({ length: usersTotalPages }, (_, i) => i + 1)
+                  .filter(p => p === 1 || p === usersTotalPages || Math.abs(p - usersPage) <= 1)
+                  .reduce((acc, p, i, arr) => {
+                    if (i > 0 && p - arr[i - 1] > 1) acc.push('...');
+                    acc.push(p);
+                    return acc;
+                  }, [])
+                  .map((p, i) => p === '...' ? (
+                    <span key={`ellipsis-${i}`} style={{ padding: '0.3rem 0.25rem', color: 'var(--text-muted)' }}>…</span>
+                  ) : (
+                    <button
+                      key={p}
+                      className="btn"
+                      style={{ fontSize: '0.78rem', padding: '0.3rem 0.625rem', minWidth: 32, background: p === usersPage ? 'rgba(124,58,237,0.2)' : 'transparent', border: `1px solid ${p === usersPage ? 'rgba(124,58,237,0.5)' : 'transparent'}`, color: p === usersPage ? 'var(--purple)' : 'inherit' }}
+                      disabled={usersLoading}
+                      onClick={() => fetchUsers(p)}
+                    >{p}</button>
+                  ))
+                }
+                <button
+                  className="btn btn-ghost"
+                  style={{ fontSize: '0.78rem', padding: '0.3rem 0.75rem' }}
+                  disabled={usersPage >= usersTotalPages || usersLoading}
+                  onClick={() => fetchUsers(usersPage + 1)}
+                >Sau ›</button>
+                <button
+                  className="btn btn-ghost"
+                  style={{ fontSize: '0.78rem', padding: '0.3rem 0.625rem' }}
+                  disabled={usersPage >= usersTotalPages || usersLoading}
+                  onClick={() => fetchUsers(usersTotalPages)}
+                >»</button>
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -1330,6 +1523,7 @@ export default function AdminPage() {
             addingCat={addingCat}
             handleAddCategory={handleAddCategory}
             handleDeleteCategory={handleDeleteCategory}
+            handleUpdateCategoryImage={handleUpdateCategoryImage}
           />
         )}
       </div>

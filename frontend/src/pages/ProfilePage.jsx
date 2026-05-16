@@ -28,6 +28,11 @@ export default function ProfilePage() {
   const [avatarPreview, setAvatarPreview] = useState('');
   const [msg, setMsg] = useState({ type: '', text: '' });
   const [selectedTicket, setSelectedTicket] = useState(null); // {ticket, order}
+  const [changingPassword, setChangingPassword] = useState(false);
+  const [pwForm, setPwForm] = useState({ currentPassword: '', newPassword: '', newPasswordConfirm: '' });
+  const [pwMsg, setPwMsg] = useState({ type: '', text: '' });
+  const [pwSaving, setPwSaving] = useState(false);
+  const [pwSuccess, setPwSuccess] = useState(false);
 
   const token = localStorage.getItem('token');
 
@@ -81,6 +86,29 @@ export default function ProfilePage() {
     }
   };
 
+  const handleChangePassword = async () => {
+    if (pwForm.newPassword !== pwForm.newPasswordConfirm) {
+      setPwMsg({ type: 'error', text: 'Mật khẩu xác nhận không khớp!' });
+      return;
+    }
+    setPwSaving(true); setPwMsg({ type: '', text: '' });
+    try {
+      await axios.patch(
+        `${API}/users/me/updatePassword`,
+        { currentPassword: pwForm.currentPassword, newPassword: pwForm.newPassword, newPasswordConfirm: pwForm.newPasswordConfirm },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      setPwSuccess(true);
+      setPwForm({ currentPassword: '', newPassword: '', newPasswordConfirm: '' });
+    } catch (err) {
+      const errData = err.response?.data;
+      const message = errData?.errors?.[0]?.message || errData?.message || 'Có lỗi xảy ra.';
+      setPwMsg({ type: 'error', text: message });
+    } finally {
+      setPwSaving(false);
+    }
+  };
+
   if (loading) return (
     <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: 'calc(100vh - 60px)' }}>
       <div className="spinner" />
@@ -126,9 +154,18 @@ export default function ProfilePage() {
             </div>
           </div>
         </div>
-        <button className="btn btn-outline" style={{ fontSize: '0.8rem', padding: '0.45rem 0.875rem' }} onClick={() => { setEditing(!editing); setMsg({ type: '', text: '' }); }}>
-          {editing ? 'Huỷ' : 'Chỉnh sửa'}
-        </button>
+        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+          <button className="btn btn-outline" style={{ fontSize: '0.8rem', padding: '0.45rem 0.875rem' }} onClick={() => { setEditing(!editing); setMsg({ type: '', text: '' }); }}>
+            {editing ? 'Huỷ' : 'Chỉnh sửa'}
+          </button>
+          <button
+            className="btn btn-ghost"
+            style={{ fontSize: '0.8rem', padding: '0.45rem 0.875rem' }}
+            onClick={() => { setChangingPassword(!changingPassword); setPwMsg({ type: '', text: '' }); setPwSuccess(false); setPwForm({ currentPassword: '', newPassword: '', newPasswordConfirm: '' }); }}
+          >
+            {changingPassword ? 'Huỷ' : 'Đổi mật khẩu'}
+          </button>
+        </div>
       </div>
 
       {/* ── Edit Form ── */}
@@ -173,6 +210,77 @@ export default function ProfilePage() {
             </button>
             <button className="btn btn-outline" onClick={() => setEditing(false)}>Huỷ</button>
           </div>
+        </div>
+      )}
+
+      {/* ── Change Password ── */}
+      {changingPassword && (
+        <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 16, padding: '1.5rem', marginBottom: '1.5rem' }}>
+          <h3 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: '1.25rem' }}>Đổi mật khẩu</h3>
+
+          {pwSuccess ? (
+            <div style={{ textAlign: 'center', padding: '1.5rem 0' }}>
+              <div style={{ width: 56, height: 56, background: 'linear-gradient(135deg, #10b981, #059669)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1rem', fontSize: '1.5rem', fontWeight: 700 }}>
+                ✓
+              </div>
+              <p style={{ fontWeight: 700, fontSize: '1rem', marginBottom: '0.4rem' }}>Đổi mật khẩu thành công!</p>
+              <p style={{ color: 'var(--text-secondary)', fontSize: '0.875rem', marginBottom: '1.25rem' }}>Mật khẩu của bạn đã được cập nhật.</p>
+              <button className="btn btn-outline" style={{ fontSize: '0.85rem' }} onClick={() => { setChangingPassword(false); setPwSuccess(false); }}>Đóng</button>
+            </div>
+          ) : (
+            <>
+              {pwMsg.text && (
+                <div className={`alert ${pwMsg.type === 'success' ? 'alert-success' : 'alert-error'}`} style={{ marginBottom: '1rem' }}>
+                  {pwMsg.text}
+                </div>
+              )}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.875rem', maxWidth: 400 }}>
+                <div className="form-group" style={{ margin: 0 }}>
+                  <label className="form-label">Mật khẩu hiện tại</label>
+                  <input
+                    type="password"
+                    className="form-input"
+                    placeholder="Nhập mật khẩu hiện tại"
+                    value={pwForm.currentPassword}
+                    onChange={e => setPwForm(f => ({ ...f, currentPassword: e.target.value }))}
+                    autoComplete="current-password"
+                  />
+                </div>
+                <div className="form-group" style={{ margin: 0 }}>
+                  <label className="form-label">Mật khẩu mới</label>
+                  <input
+                    type="password"
+                    className="form-input"
+                    placeholder="Tối thiểu 6 ký tự"
+                    value={pwForm.newPassword}
+                    onChange={e => setPwForm(f => ({ ...f, newPassword: e.target.value }))}
+                    autoComplete="new-password"
+                  />
+                </div>
+                <div className="form-group" style={{ margin: 0 }}>
+                  <label className="form-label">Xác nhận mật khẩu mới</label>
+                  <input
+                    type="password"
+                    className="form-input"
+                    placeholder="Nhập lại mật khẩu mới"
+                    value={pwForm.newPasswordConfirm}
+                    onChange={e => setPwForm(f => ({ ...f, newPasswordConfirm: e.target.value }))}
+                    autoComplete="new-password"
+                  />
+                </div>
+              </div>
+              <div style={{ marginTop: '1.25rem', display: 'flex', gap: '0.75rem' }}>
+                <button
+                  className="btn btn-primary"
+                  onClick={handleChangePassword}
+                  disabled={pwSaving || !pwForm.currentPassword || !pwForm.newPassword || !pwForm.newPasswordConfirm}
+                >
+                  {pwSaving ? <><span className="spinner" style={{ width: 14, height: 14, borderWidth: 2 }} />Đang lưu...</> : 'Xác nhận đổi mật khẩu'}
+                </button>
+                <button className="btn btn-outline" onClick={() => { setChangingPassword(false); setPwMsg({ type: '', text: '' }); }}>Huỷ</button>
+              </div>
+            </>
+          )}
         </div>
       )}
 
