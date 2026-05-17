@@ -9,6 +9,7 @@ const { uploadSingleImage } = require('../../middlewares/uploadImageMiddleware')
 
 router.get('/', eventController.getAll);
 router.get('/:id', verifyToken, verifyQueueAccess, eventController.getOne);
+router.get('/:id/landing', eventController.getLandingInfo);
 router.post('/', verifyToken, restrictTo('ADMIN'), validate(eventSchema.createEventSchema), eventController.createEvents);
 
 // PATCH /:id/image — Upload ảnh event (multipart/form-data, field name: "image")

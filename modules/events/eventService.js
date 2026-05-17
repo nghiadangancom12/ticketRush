@@ -12,6 +12,26 @@ class EventService {
     return event;
   }
 
+  async getLandingInfo(id) {
+    const event = await eventRepository.findLandingInfoById(id);
+    if (!event) throw new AppError('Sự kiện không tồn tại', 404);
+
+    const minPrice = event.zones.length > 0 
+      ? Math.min(...event.zones.map(z => Number(z.price)))
+      : 0;
+
+    return {
+      id: event.id,
+      title: event.title,
+      image_url: event.image_url,
+      description: event.description,
+      starting_price: minPrice,
+      zone_prices: event.zones.map(z => ({ name: z.name, price: Number(z.price) })),
+      start_time: event.start_time,
+      location: event.location,
+    };
+  }
+
   async create({ title, description, start_time, location, category_id, zones, adminId }) {
     // Không cần Bước 1 & 2 nữa. Nếu lọt được vào đây, dữ liệu CHẮC CHẮN ĐÃ CHUẨN 100%.
 

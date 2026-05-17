@@ -900,6 +900,67 @@ paths:
         '403':
           description: Chỉ admin mới có thể tạo sự kiện
 
+  /api/events/{id}/landing:
+    get:
+      tags: [Events]
+      summary: Lấy thông tin Landing Page của sự kiện
+      description: |
+        Public endpoint. Trả về thông tin cơ bản của sự kiện bao gồm ảnh sự kiện, mô tả, giá vé bắt đầu, giá vé từng hạng, thời gian và địa điểm.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: ID sự kiện
+      responses:
+        '200':
+          description: Lấy thành công
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "success"
+                  data:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                        format: uuid
+                      title:
+                        type: string
+                        example: "Lễ hội âm nhạc mùa hè 2025"
+                      image_url:
+                        type: string
+                        nullable: true
+                      description:
+                        type: string
+                      starting_price:
+                        type: number
+                        example: 500000
+                      zone_prices:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            name:
+                              type: string
+                              example: "VIP"
+                            price:
+                              type: number
+                              example: 1000000
+                      start_time:
+                        type: string
+                        format: date-time
+                      location:
+                        type: string
+        '404':
+          description: Sự kiện không tồn tại
+
   /api/events/{id}:
     get:
       tags: [Events]
