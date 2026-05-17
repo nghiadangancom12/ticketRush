@@ -25,6 +25,15 @@ class EventRepository {
     });
   }
 
+  async findLandingInfoById(id) {
+    return prisma.events.findUnique({
+      where: { id },
+      include: {
+        zones: { select: { id: true, name: true, price: true } }
+      }
+    });
+  }
+
   async create(eventData) {
     return prisma.events.create({
       data: eventData

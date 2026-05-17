@@ -14,6 +14,11 @@ exports.getOne = catchAsync(async (req, res) => {
   ResponseFactory.success(res, event);
 });
 
+exports.getLandingInfo = catchAsync(async (req, res) => {
+  const info = await eventService.getLandingInfo(req.params.id);
+  ResponseFactory.success(res, info);
+});
+
 exports.createEvents = catchAsync(async (req, res, next) => {
     // 1. Gom dữ liệu từ body
     const eventPayload = req.body;
