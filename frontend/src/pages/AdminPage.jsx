@@ -600,15 +600,35 @@ export default function AdminPage() {
 
   const fetchOrders = async (page = 1) => {
     setOrdersLoading(true);
-    const s = ordersSearchRef.current.trim().replace(/^#/, '');
-    const searchParam = s ? `&id[contains]=${encodeURIComponent(s.toLowerCase())}` : '';
+    const s = ordersSearchRef.current.trim().replace(/^#/, '').toLowerCase();
     try {
-      const res = await axios.get(`${API}/orders?limit=10&page=${page}${searchParam}`, { headers: authHeader() });
-      const d = res.data.data;
-      setOrders(d?.data || []);
-      setOrdersPage(d?.page || 1);
-      setOrdersTotalPages(d?.totalPages || 1);
-      setOrdersTotal(d?.total || 0);
+      if (s) {
+        // UUID không hỗ trợ LIKE trên backend → fetch toàn bộ (max 100/trang) rồi filter client-side
+        const first = await axios.get(`${API}/orders?limit=100&page=1`, { headers: authHeader() });
+        const d0 = first.data.data;
+        let allOrders = d0?.data || [];
+        const totalPages = d0?.totalPages || 1;
+        if (totalPages > 1) {
+          const rest = await Promise.all(
+            Array.from({ length: totalPages - 1 }, (_, i) =>
+              axios.get(`${API}/orders?limit=100&page=${i + 2}`, { headers: authHeader() })
+            )
+          );
+          rest.forEach(r => { allOrders = allOrders.concat(r.data.data?.data || []); });
+        }
+        const filtered = allOrders.filter(o => String(o.id).slice(-6).toLowerCase().includes(s));
+        setOrders(filtered);
+        setOrdersPage(1);
+        setOrdersTotalPages(1);
+        setOrdersTotal(filtered.length);
+      } else {
+        const res = await axios.get(`${API}/orders?limit=10&page=${page}`, { headers: authHeader() });
+        const d = res.data.data;
+        setOrders(d?.data || []);
+        setOrdersPage(d?.page || 1);
+        setOrdersTotalPages(d?.totalPages || 1);
+        setOrdersTotal(d?.total || 0);
+      }
     } catch { setOrders([]); } finally { setOrdersLoading(false); }
   };
 
@@ -1364,7 +1384,7 @@ export default function AdminPage() {
                 <div style={{ display: 'flex', justifyContent: 'center', padding: '2rem' }}><div className="spinner" /></div>
               ) : selectedOrder && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.875rem', fontSize: '0.84rem' }}>
-                  <div><span style={{ color: 'var(--text-muted)' }}>Mã: </span><span style={{ fontFamily: 'monospace' }}>#{String(selectedOrder.id).slice(-8)}</span></div>
+                  <div><span style={{ color: 'var(--text-muted)' }}>Mã: </span><span style={{ fontFamily: 'monospace' }}>#{String(selectedOrder.id).slice(-6)}</span></div>
                   <div><span style={{ color: 'var(--text-muted)' }}>Khách: </span><strong>{selectedOrder.users?.full_name || selectedOrder.users?.email || '—'}</strong></div>
                   <div><span style={{ color: 'var(--text-muted)' }}>Sự kiện: </span>{selectedOrder.events?.title || '—'}</div>
                   <div><span style={{ color: 'var(--text-muted)' }}>Tổng: </span><strong style={{ color: 'var(--success)' }}>{Number(selectedOrder.total_amount || 0).toLocaleString('vi-VN')}đ</strong></div>
