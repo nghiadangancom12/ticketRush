@@ -20,10 +20,12 @@ export default function EventDetailPage() {
   const [selectedSeats, setSelectedSeats] = useState([]);
   const [errorMsg, setErrorMsg] = useState('');
   const [countdown, setCountdown] = useState(null);
+  const [showBackWarning, setShowBackWarning] = useState(false);
 
   const token = localStorage.getItem('token');
   const heartbeatRef = useRef(null);
   const countdownRef = useRef(null);
+  const isQueueActiveRef = useRef(true);
 
   const expireAt = location.state?.expireAt
     || (Number(localStorage.getItem('seatSelectionExpiry')) || null);
@@ -78,7 +80,7 @@ export default function EventDetailPage() {
       axios.post(`${API}/queue/${id}/heartbeat`, {}, { headers: { Authorization: `Bearer ${token}` } })
         .then(res => {
           if (res.data.data?.noQueue) {
-            // Queue đang tắt — xóa countdown cũ sót từ session trước
+            isQueueActiveRef.current = false;
             clearInterval(countdownRef.current);
             setCountdown(null);
             localStorage.removeItem('seatSelectionExpiry');
@@ -111,6 +113,31 @@ export default function EventDetailPage() {
     countdownRef.current = setInterval(tick, 1000);
     return () => clearInterval(countdownRef.current);
   }, [expireAt]);
+
+  // Back button guard — cảnh báo mất lượt queue khi bấm back
+  useEffect(() => {
+    window.history.pushState(null, '');
+    const handlePopState = () => {
+      if (!isQueueActiveRef.current) {
+        clearInterval(heartbeatRef.current);
+        clearInterval(countdownRef.current);
+        localStorage.removeItem('seatSelectionExpiry');
+        navigate(`/event/${id}`, { replace: true });
+        return;
+      }
+      setShowBackWarning(true);
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+
+  const confirmBack = () => {
+    setShowBackWarning(false);
+    clearInterval(heartbeatRef.current);
+    clearInterval(countdownRef.current);
+    localStorage.removeItem('seatSelectionExpiry');
+    navigate(`/event/${id}`, { replace: true });
+  };
 
   // Chọn / bỏ chọn ghế — chỉ cập nhật local state, không gọi API
   const toggleSeat = (seat, zone) => {
@@ -165,6 +192,48 @@ export default function EventDetailPage() {
   const totalSelected = selectedSeats.reduce((s, seat) => s + Number(seat.price), 0);
 
   return (
+    <>
+    {showBackWarning && (
+      <div style={{
+        position: 'fixed', inset: 0, zIndex: 9999,
+        background: 'rgba(0,0,0,0.72)', backdropFilter: 'blur(4px)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1.5rem',
+      }}>
+        <div style={{
+          background: 'var(--bg-card)', border: '1px solid rgba(239,68,68,0.35)',
+          borderRadius: 20, padding: '2.5rem 2rem', maxWidth: 420, width: '100%', textAlign: 'center',
+        }} className="animate-fadeIn">
+          <div style={{ fontSize: '2.75rem', marginBottom: '1rem' }}>⚠️</div>
+          <h2 style={{ fontSize: '1.25rem', fontWeight: 800, marginBottom: '0.75rem' }}>
+            Bạn có chắc muốn quay lại?
+          </h2>
+          <p style={{ color: 'var(--text-secondary)', fontSize: '0.875rem', lineHeight: 1.7, marginBottom: '2rem' }}>
+            Nếu quay lại, bạn sẽ{' '}
+            <strong style={{ color: '#ef4444' }}>mất lượt hiện tại</strong> và phải{' '}
+            <strong style={{ color: 'var(--warning)' }}>xếp hàng lại từ đầu</strong>.
+          </p>
+          <div style={{ display: 'flex', gap: '0.75rem' }}>
+            <button
+              className="btn btn-outline"
+              style={{ flex: 1, justifyContent: 'center' }}
+              onClick={() => { setShowBackWarning(false); window.history.pushState(null, ''); }}
+            >
+              Ở lại
+            </button>
+            <button
+              className="btn"
+              style={{
+                flex: 1, justifyContent: 'center',
+                background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.4)', color: '#ef4444',
+              }}
+              onClick={confirmBack}
+            >
+              Quay lại & Xếp hàng lại
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
     <div style={{ maxWidth: 1200, margin: '0 auto', padding: '1.5rem 1.5rem 6rem' }}>
       <div style={{ display: 'grid', gridTemplateColumns: '320px 1fr', gap: '1.5rem', alignItems: 'start' }}>
 
@@ -380,5 +449,6 @@ export default function EventDetailPage() {
         </div>
       )}
     </div>
+    </>
   );
 }

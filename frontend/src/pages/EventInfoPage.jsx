@@ -12,19 +12,9 @@ export default function EventInfoPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const token = localStorage.getItem('token');
-    axios.get(`${API_BASE}/events/${id}`, {
-      headers: token ? { Authorization: `Bearer ${token}` } : {},
-    })
+    axios.get(`${API_BASE}/events/${id}/landing`)
       .then(res => setEvent(res.data.data))
-      .catch(err => {
-        if (err.response?.status === 403) {
-          // Queue đang bật, user chưa được vào phòng → chuyển sang xếp hàng
-          navigate(`/event/${id}/queue`);
-        } else {
-          setEvent(null);
-        }
-      })
+      .catch(() => setEvent(null))
       .finally(() => setLoading(false));
   }, [id]);
 
@@ -34,7 +24,7 @@ export default function EventInfoPage() {
     </div>
   );
 
-  if (!event || event.status === 'DELETED') return (
+  if (!event) return (
     <div style={{ minHeight: 'calc(100vh - 60px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2rem' }}>
       <div style={{ textAlign: 'center' }}>
         <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>🔍</div>
@@ -46,8 +36,7 @@ export default function EventInfoPage() {
   );
 
   const startDate = new Date(event.start_time);
-  const minPrice = event.zones?.length > 0 ? Math.min(...event.zones.map(z => Number(z.price))) : 0;
-  const isClosed = event.status === 'CLOSED' || event.status === 'DRAFT';
+  const minPrice = event.starting_price ?? 0;
 
   return (
     <div style={{ maxWidth: 800, margin: '0 auto', padding: '2rem 1.5rem 4rem' }}>
@@ -62,20 +51,10 @@ export default function EventInfoPage() {
         )}
         <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(10,10,20,0.85) 0%, transparent 60%)' }} />
         <div style={{ position: 'absolute', bottom: '1.25rem', left: '1.5rem', right: '1.5rem' }}>
-          {event.categories?.name && (
-            <span className="badge badge-purple" style={{ marginBottom: '0.5rem', display: 'inline-block', fontSize: '0.7rem' }}>
-              {event.categories.name}
-            </span>
-          )}
           <h1 style={{ fontSize: 'clamp(1.4rem, 4vw, 2rem)', fontWeight: 900, lineHeight: 1.2, textShadow: '0 2px 12px rgba(0,0,0,0.6)' }}>
             {event.title}
           </h1>
         </div>
-        {isClosed && (
-          <div style={{ position: 'absolute', top: '1rem', right: '1rem', background: 'rgba(0,0,0,0.7)', border: '1px solid rgba(239,68,68,0.5)', borderRadius: 8, padding: '0.3rem 0.75rem', fontSize: '0.75rem', color: '#ef4444', fontWeight: 600 }}>
-            Đã kết thúc
-          </div>
-        )}
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: '2rem', alignItems: 'start' }}>
@@ -119,12 +98,12 @@ export default function EventInfoPage() {
           )}
 
           {/* Zones / Pricing */}
-          {event.zones?.length > 0 && (
+          {event.zone_prices?.length > 0 && (
             <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 12, padding: '1.25rem' }}>
               <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', letterSpacing: '0.06em', marginBottom: '0.875rem' }}>BẢNG GIÁ VÉ</div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                {event.zones.map((zone, i) => (
-                  <div key={zone.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.625rem 0.875rem', borderRadius: 8, background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border)' }}>
+                {event.zone_prices.map((zone, i) => (
+                  <div key={zone.name} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.625rem 0.875rem', borderRadius: 8, background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border)' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
                       <div style={{ width: 10, height: 10, borderRadius: '50%', background: ZONE_COLORS[i % ZONE_COLORS.length], flexShrink: 0 }} />
                       <span style={{ fontSize: '0.875rem', fontWeight: 600 }}>{zone.name}</span>
@@ -147,19 +126,13 @@ export default function EventInfoPage() {
               {minPrice > 0 ? `${minPrice.toLocaleString('vi-VN')}đ` : 'Miễn phí'}
             </div>
 
-            {isClosed ? (
-              <button className="btn btn-outline" disabled style={{ width: '100%', justifyContent: 'center', opacity: 0.5 }}>
-                Sự kiện đã kết thúc
-              </button>
-            ) : (
-              <button
-                className="btn btn-primary"
-                style={{ width: '100%', justifyContent: 'center', padding: '0.85rem', fontSize: '0.95rem' }}
-                onClick={() => navigate(`/event/${id}/queue`)}
-              >
-                Mua vé ngay →
-              </button>
-            )}
+            <button
+              className="btn btn-primary"
+              style={{ width: '100%', justifyContent: 'center', padding: '0.85rem', fontSize: '0.95rem' }}
+              onClick={() => navigate(`/event/${id}/queue`)}
+            >
+              Mua vé ngay →
+            </button>
 
             <p style={{ marginTop: '0.875rem', fontSize: '0.72rem', color: 'var(--text-muted)', lineHeight: 1.5 }}>
               Hệ thống hàng chờ công bằng — vào theo thứ tự
