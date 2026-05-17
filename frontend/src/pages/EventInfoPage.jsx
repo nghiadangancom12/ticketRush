@@ -17,7 +17,14 @@ export default function EventInfoPage() {
       headers: token ? { Authorization: `Bearer ${token}` } : {},
     })
       .then(res => setEvent(res.data.data))
-      .catch(() => setEvent(null))
+      .catch(err => {
+        if (err.response?.status === 403) {
+          // Queue đang bật, user chưa được vào phòng → chuyển sang xếp hàng
+          navigate(`/event/${id}/queue`);
+        } else {
+          setEvent(null);
+        }
+      })
       .finally(() => setLoading(false));
   }, [id]);
 

@@ -7,7 +7,8 @@ axios.interceptors.response.use(
   (res) => res,
   (err) => {
     if (err.response?.status === 429) {
-      alert('Bạn đang thao tác quá nhanh. Vui lòng chờ một chút rồi thử lại.');
+      const retryAfter = parseInt(err.response.headers['retry-after'] || '10', 10);
+      window.dispatchEvent(new CustomEvent('rate-limited', { detail: { seconds: retryAfter } }));
     }
     return Promise.reject(err);
   }

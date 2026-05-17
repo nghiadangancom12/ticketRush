@@ -46,10 +46,18 @@ export default function QueuePage() {
     const res = await axios.post(`${API}/queue/${eventId}/join`, {}, { headers: { Authorization: `Bearer ${token}` } });
     const d = res.data.data;
     if (d.status === 'allowed' || d.status === 'no_queue') {
-      stopPolling(); setStatus('allowed');
-      const expireAt = Date.now() + 60 * 1000;
-      localStorage.setItem('seatSelectionExpiry', String(expireAt));
-      setTimeout(() => navigate(`/event/${eventId}/seats`, { state: { expireAt } }), 800);
+      stopPolling();
+      if (d.status === 'no_queue') {
+        // Queue tắt — vào thẳng, không hiện màn hình "Đến lượt bạn"
+        localStorage.removeItem('seatSelectionExpiry');
+        navigate(`/event/${eventId}/seats`, { replace: true });
+      } else {
+        // Queue bật, user được phép vào — hiện màn hình chờ 800ms rồi chuyển
+        setStatus('allowed');
+        const expireAt = Date.now() + 60 * 1000;
+        localStorage.setItem('seatSelectionExpiry', String(expireAt));
+        setTimeout(() => navigate(`/event/${eventId}/seats`, { state: { expireAt } }), 800);
+      }
     } else {
       setStatus('in_queue'); setPosition(d.position);
     }

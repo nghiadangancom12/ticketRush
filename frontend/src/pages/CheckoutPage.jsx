@@ -22,11 +22,13 @@ export default function CheckoutPage() {
   const [success, setSuccess] = useState(false);
   const [orderInfo, setOrderInfo] = useState(null);
   const [errorMsg, setErrorMsg] = useState('');
+  const [showBackWarning, setShowBackWarning] = useState(false);
 
   const heartbeatRef = useRef(null);
   const countdownRef = useRef(null);
   const holdExpiryRef = useRef(null);
-  const isCompletedRef = useRef(false); // ngăn double-release khi unmount
+  const isCompletedRef = useRef(false);
+  const isQueueActiveRef = useRef(true);
 
   // Bước 1: Gọi hold khi vào trang
   useEffect(() => {
@@ -78,7 +80,8 @@ export default function CheckoutPage() {
     if (!eventId || !token) return;
     const ping = async () => {
       try {
-        await axios.post(`${API}/queue/${eventId}/heartbeat`, {}, { headers: { Authorization: `Bearer ${token}` } });
+        const res = await axios.post(`${API}/queue/${eventId}/heartbeat`, {}, { headers: { Authorization: `Bearer ${token}` } });
+        if (res.data.data?.noQueue) isQueueActiveRef.current = false;
       } catch (err) {
         if (err.response?.status === 410) {
           clearInterval(heartbeatRef.current);
@@ -102,14 +105,10 @@ export default function CheckoutPage() {
 
     const handlePopState = () => {
       if (isCompletedRef.current) return;
-
       window.history.pushState(null, '');
 
-      const ok = window.confirm(
-        'Nếu quay lại, toàn bộ ghế đang giữ sẽ bị hủy và bạn phải xếp hàng lại từ đầu.\n\nBạn có chắc muốn quay lại không?'
-      );
-
-      if (ok) {
+      if (!isQueueActiveRef.current) {
+        // Queue tắt — quay lại không cần cảnh báo
         isCompletedRef.current = true;
         clearInterval(heartbeatRef.current);
         clearInterval(countdownRef.current);
@@ -121,7 +120,10 @@ export default function CheckoutPage() {
         }).catch(() => {});
         localStorage.removeItem('checkoutEventId');
         navigate(`/event/${eventId}`, { replace: true });
+        return;
       }
+
+      setShowBackWarning(true);
     };
 
     window.addEventListener('popstate', handlePopState);
@@ -141,6 +143,21 @@ export default function CheckoutPage() {
       }
     };
   }, []);
+
+  const confirmBack = () => {
+    setShowBackWarning(false);
+    isCompletedRef.current = true;
+    clearInterval(heartbeatRef.current);
+    clearInterval(countdownRef.current);
+    fetch(`${API}/Booking/return`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ eventId }),
+      keepalive: true,
+    }).catch(() => {});
+    localStorage.removeItem('checkoutEventId');
+    navigate(`/event/${eventId}`, { replace: true });
+  };
 
   const handleCheckout = async () => {
     setLoading(true);
@@ -165,20 +182,24 @@ export default function CheckoutPage() {
     }
   };
 
-  const handleCancel = async () => {
+  const handleCancel = () => {
+    if (isQueueActiveRef.current) {
+      // Queue bật — hiện modal cảnh báo giống nút Back
+      setShowBackWarning(true);
+      return;
+    }
+    // Queue tắt — hủy thẳng, không cần cảnh báo
     isCompletedRef.current = true;
     clearInterval(heartbeatRef.current);
     clearInterval(countdownRef.current);
     setCancelling(true);
-    try {
-      await axios.post(`${API}/Booking/return`, { eventId }, { headers: { Authorization: `Bearer ${token}` } });
-    } catch {
-      // Nếu lỗi vẫn navigate về, BullMQ sẽ tự nhả ghế sau timeout
-    } finally {
-      setCancelling(false);
-      localStorage.removeItem('checkoutEventId');
-      navigate(`/event/${eventId}`);
-    }
+    axios.post(`${API}/Booking/return`, { eventId }, { headers: { Authorization: `Bearer ${token}` } })
+      .catch(() => {})
+      .finally(() => {
+        setCancelling(false);
+        localStorage.removeItem('checkoutEventId');
+        navigate(`/event/${eventId}`);
+      });
   };
 
   const totalAmount = seats?.reduce((sum, s) => sum + Number(s.price), 0) || 0;
@@ -240,6 +261,48 @@ export default function CheckoutPage() {
 
   /* ── Ready phase: hold thành công, chờ confirm ── */
   return (
+    <>
+    {showBackWarning && (
+      <div style={{
+        position: 'fixed', inset: 0, zIndex: 9999,
+        background: 'rgba(0,0,0,0.72)', backdropFilter: 'blur(4px)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1.5rem',
+      }}>
+        <div style={{
+          background: 'var(--bg-card)', border: '1px solid rgba(239,68,68,0.35)',
+          borderRadius: 20, padding: '2.5rem 2rem', maxWidth: 420, width: '100%', textAlign: 'center',
+        }} className="animate-fadeIn">
+          <div style={{ fontSize: '2.75rem', marginBottom: '1rem' }}>⚠️</div>
+          <h2 style={{ fontSize: '1.25rem', fontWeight: 800, marginBottom: '0.75rem' }}>
+            Bạn có chắc muốn quay lại?
+          </h2>
+          <p style={{ color: 'var(--text-secondary)', fontSize: '0.875rem', lineHeight: 1.7, marginBottom: '2rem' }}>
+            Nếu quay lại, toàn bộ ghế đang giữ sẽ bị{' '}
+            <strong style={{ color: '#ef4444' }}>hủy ngay lập tức</strong> và bạn sẽ phải{' '}
+            <strong style={{ color: 'var(--warning)' }}>xếp hàng lại từ đầu</strong>.
+          </p>
+          <div style={{ display: 'flex', gap: '0.75rem' }}>
+            <button
+              className="btn btn-outline"
+              style={{ flex: 1, justifyContent: 'center' }}
+              onClick={() => setShowBackWarning(false)}
+            >
+              Ở lại
+            </button>
+            <button
+              className="btn"
+              style={{
+                flex: 1, justifyContent: 'center',
+                background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.4)', color: '#ef4444',
+              }}
+              onClick={confirmBack}
+            >
+              Quay lại & Hủy ghế
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
     <div style={{ minHeight: 'calc(100vh - 60px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2rem' }}>
       <div style={{ width: '100%', maxWidth: 480 }} className="animate-fadeIn">
         {/* Header */}
@@ -336,5 +399,6 @@ export default function CheckoutPage() {
         </div>
       </div>
     </div>
+    </>
   );
 }

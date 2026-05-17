@@ -76,6 +76,14 @@ export default function EventDetailPage() {
     if (!token) return;
     const ping = () =>
       axios.post(`${API}/queue/${id}/heartbeat`, {}, { headers: { Authorization: `Bearer ${token}` } })
+        .then(res => {
+          if (res.data.data?.noQueue) {
+            // Queue đang tắt — xóa countdown cũ sót từ session trước
+            clearInterval(countdownRef.current);
+            setCountdown(null);
+            localStorage.removeItem('seatSelectionExpiry');
+          }
+        })
         .catch(err => {
           if (err.response?.status === 410) {
             clearInterval(heartbeatRef.current);

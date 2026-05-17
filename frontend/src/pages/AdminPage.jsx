@@ -686,6 +686,23 @@ export default function AdminPage() {
   useEffect(() => { if (activeView === 'tickets') fetchOrders(1); }, [activeView]);
   useEffect(() => { if (activeView === 'users') fetchUsers(1); }, [activeView]);
 
+  // Mỗi khi admin chọn event khác, hỏi server trạng thái queue thực từ Redis
+  useEffect(() => {
+    if (!selectedEventId) return;
+    axios.post(`${API}/queue/${selectedEventId}/heartbeat`, {}, { headers: authHeader() })
+      .then(res => {
+        // noQueue: true → queue đang TẮT; không có noQueue → queue đang BẬT (admin không có session)
+        setQueueToggles(prev => ({ ...prev, [selectedEventId]: !res.data.data?.noQueue }));
+      })
+      .catch(err => {
+        if (err.response?.status === 410) {
+          // 410 = queue BẬT nhưng admin không có session (expected)
+          setQueueToggles(prev => ({ ...prev, [selectedEventId]: true }));
+        }
+        // Các lỗi khác (network, 401…): giữ nguyên trạng thái hiện tại
+      });
+  }, [selectedEventId]);
+
   const handleQueueToggle = async (eventId, turnOn) => {
     setQueueLoading(eventId);
     try {
