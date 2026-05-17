@@ -518,6 +518,7 @@ export default function AdminPage() {
   const [ordersPage, setOrdersPage] = useState(1);
   const [ordersTotalPages, setOrdersTotalPages] = useState(1);
   const [ordersTotal, setOrdersTotal] = useState(0);
+  const [ordersSearch, setOrdersSearch] = useState('');
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [orderDetailLoading, setOrderDetailLoading] = useState(false);
   const [users, setUsers] = useState([]);
@@ -525,6 +526,9 @@ export default function AdminPage() {
   const [usersPage, setUsersPage] = useState(1);
   const [usersTotalPages, setUsersTotalPages] = useState(1);
   const [usersTotal, setUsersTotal] = useState(0);
+  const [usersSearch, setUsersSearch] = useState('');
+  const ordersSearchRef = useRef('');
+  const usersSearchRef = useRef('');
   const [categoryAnalytics, setCategoryAnalytics] = useState(null);
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState('');
@@ -596,8 +600,10 @@ export default function AdminPage() {
 
   const fetchOrders = async (page = 1) => {
     setOrdersLoading(true);
+    const s = ordersSearchRef.current.trim().replace(/^#/, '');
+    const searchParam = s ? `&id[contains]=${encodeURIComponent(s.toLowerCase())}` : '';
     try {
-      const res = await axios.get(`${API}/orders?limit=10&page=${page}`, { headers: authHeader() });
+      const res = await axios.get(`${API}/orders?limit=10&page=${page}${searchParam}`, { headers: authHeader() });
       const d = res.data.data;
       setOrders(d?.data || []);
       setOrdersPage(d?.page || 1);
@@ -616,8 +622,10 @@ export default function AdminPage() {
 
   const fetchUsers = async (page = 1) => {
     setUsersLoading(true);
+    const s = usersSearchRef.current.trim();
+    const searchParam = s ? `&email[contains]=${encodeURIComponent(s)}` : '';
     try {
-      const res = await axios.get(`${API}/users?limit=10&page=${page}`, { headers: authHeader() });
+      const res = await axios.get(`${API}/users?limit=10&page=${page}${searchParam}`, { headers: authHeader() });
       const d = res.data.data;
       setUsers(d?.data || d?.users || []);
       setUsersPage(d?.page || 1);
@@ -685,6 +693,7 @@ export default function AdminPage() {
   useEffect(() => { if (activeView === 'analytics') { fetchAnalytics(); fetchCategoryAnalytics(); } }, [activeView]);
   useEffect(() => { if (activeView === 'tickets') fetchOrders(1); }, [activeView]);
   useEffect(() => { if (activeView === 'users') fetchUsers(1); }, [activeView]);
+
 
   // Mỗi khi admin chọn event khác, hỏi server trạng thái queue thực từ Redis
   useEffect(() => {
@@ -1200,12 +1209,41 @@ export default function AdminPage() {
   /* ─── ORDERS VIEW ─── */
   const OrdersView = () => (
     <div>
-      <div style={{ marginBottom: '1.75rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <div style={{ marginBottom: '1.75rem', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem', flexWrap: 'wrap' }}>
         <div>
           <h1 style={{ fontSize: '1.5rem', fontWeight: 800 }}>Quản lý Đơn hàng</h1>
           <p style={{ color: 'var(--text-secondary)', fontSize: '0.875rem' }}>Tất cả đơn đặt vé của hệ thống</p>
         </div>
-        <button className="btn btn-outline" style={{ fontSize: '0.8rem' }} onClick={() => fetchOrders(1)}>↻ Tải lại</button>
+        <div style={{ display: 'flex', gap: '0.625rem', alignItems: 'center' }}>
+          <div style={{ position: 'relative' }}>
+            <input
+              type="text"
+              placeholder="Tìm mã đơn hàng..."
+              value={ordersSearch}
+              onChange={e => { ordersSearchRef.current = e.target.value; setOrdersSearch(e.target.value); }}
+              onKeyDown={e => { if (e.key === 'Enter') fetchOrders(1); }}
+              style={{
+                background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border)', borderRadius: 8,
+                padding: '0.45rem 2.25rem 0.45rem 0.75rem', fontSize: '0.82rem', color: 'var(--text)',
+                width: 220, outline: 'none',
+              }}
+            />
+            {ordersSearch ? (
+              <button
+                onClick={() => { ordersSearchRef.current = ''; setOrdersSearch(''); fetchOrders(1); }}
+                style={{ position: 'absolute', right: '0.5rem', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '0.75rem', padding: 0 }}
+                title="Xóa tìm kiếm"
+              >✕</button>
+            ) : (
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" strokeWidth="2"
+                style={{ position: 'absolute', right: '0.625rem', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }}>
+                <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
+              </svg>
+            )}
+          </div>
+          <button className="btn btn-primary" style={{ fontSize: '0.8rem' }} onClick={() => fetchOrders(1)}>Tìm</button>
+          <button className="btn btn-outline" style={{ fontSize: '0.8rem' }} onClick={() => fetchOrders(1)}>↻ Tải lại</button>
+        </div>
       </div>
 
       {ordersLoading ? (
@@ -1361,12 +1399,41 @@ export default function AdminPage() {
   /* ─── USERS VIEW ─── */
   const UsersView = () => (
     <div>
-      <div style={{ marginBottom: '1.75rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <div style={{ marginBottom: '1.75rem', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem', flexWrap: 'wrap' }}>
         <div>
           <h1 style={{ fontSize: '1.5rem', fontWeight: 800 }}>Quản lý Người dùng</h1>
           <p style={{ color: 'var(--text-secondary)', fontSize: '0.875rem' }}>Danh sách tất cả tài khoản trong hệ thống</p>
         </div>
-        <button className="btn btn-outline" style={{ fontSize: '0.8rem' }} onClick={() => fetchUsers(1)}>↻ Tải lại</button>
+        <div style={{ display: 'flex', gap: '0.625rem', alignItems: 'center' }}>
+          <div style={{ position: 'relative' }}>
+            <input
+              type="text"
+              placeholder="Tìm email người dùng..."
+              value={usersSearch}
+              onChange={e => { usersSearchRef.current = e.target.value; setUsersSearch(e.target.value); }}
+              onKeyDown={e => { if (e.key === 'Enter') fetchUsers(1); }}
+              style={{
+                background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border)', borderRadius: 8,
+                padding: '0.45rem 2.25rem 0.45rem 0.75rem', fontSize: '0.82rem', color: 'var(--text)',
+                width: 230, outline: 'none',
+              }}
+            />
+            {usersSearch ? (
+              <button
+                onClick={() => { usersSearchRef.current = ''; setUsersSearch(''); fetchUsers(1); }}
+                style={{ position: 'absolute', right: '0.5rem', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '0.75rem', padding: 0 }}
+                title="Xóa tìm kiếm"
+              >✕</button>
+            ) : (
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" strokeWidth="2"
+                style={{ position: 'absolute', right: '0.625rem', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }}>
+                <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
+              </svg>
+            )}
+          </div>
+          <button className="btn btn-primary" style={{ fontSize: '0.8rem' }} onClick={() => fetchUsers(1)}>Tìm</button>
+          <button className="btn btn-outline" style={{ fontSize: '0.8rem' }} onClick={() => fetchUsers(1)}>↻ Tải lại</button>
+        </div>
       </div>
 
       {usersLoading ? (
@@ -1530,8 +1597,8 @@ export default function AdminPage() {
         {activeView === 'overview' && <OverviewView />}
         {activeView === 'events' && <EventsView />}
         {activeView === 'analytics' && <AnalyticsView />}
-        {activeView === 'tickets' && <OrdersView />}
-        {activeView === 'users' && <UsersView />}
+        {activeView === 'tickets' && OrdersView()}
+        {activeView === 'users' && UsersView()}
         {activeView === 'categories' && (
           <CategoriesView
             allCategories={allCategories}
