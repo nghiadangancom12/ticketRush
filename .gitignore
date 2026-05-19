@@ -4,8 +4,8 @@ node_modules
 .agents/
 /generated/prisma
 skills-lock.json
-!README.md
 *.md
+!README.md
 
 .claude/
 .gitnexus
