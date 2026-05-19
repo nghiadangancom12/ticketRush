@@ -36,13 +36,12 @@ module.exports = (err, req, res, next) => {
       status: error.status,
       error: err,
       message: error.message,
-      errors: error.errors, // <--- THÊM DÒNG NÀY: Lấy mảng lỗi chi tiết của Zod
+      errors: error.errors, 
       stack: err.stack
     });
   } else {
     // Production
     if (error.isOperational) {
-      // <--- SỬA DÒNG NÀY: Truyền thêm error.errors làm tham số thứ 4
       return ResponseFactory.error(res, error.message, error.statusCode, error.errors); 
     }
     // Programming or other unknown error: don't leak error details

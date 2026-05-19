@@ -60,7 +60,7 @@ const processQueueLua = `
   return luckyUsers
 `;
 redis.defineCommand('luaProcessQueue', {
-  numberOfKeys: 4, // [NEW] Tăng lên 4 key
+  numberOfKeys: 4, 
   lua: processQueueLua,
 });
 
@@ -96,7 +96,7 @@ const joinQueueLua = `
   end
 `;
 redis.defineCommand('luaJoinQueue', {
-  numberOfKeys: 3, // [NEW] Tăng lên 3 key
+  numberOfKeys: 3, 
   lua: joinQueueLua,
 });
 
@@ -237,7 +237,7 @@ class QueueService {
   // CÁC HÀM DÀNH RIÊNG CHO WORKER (GATEKEEPER)
   // ==========================================
 
-  async processQueue(eventId, batchSize = 2, ttlSeconds = 20) {
+  async processQueue(eventId, batchSize = 50, ttlSeconds = 20) {
     const now = Date.now();
     const activeKey = `queue:active_sessions:${eventId}`;
     const listKey = `queue:list:${eventId}`;

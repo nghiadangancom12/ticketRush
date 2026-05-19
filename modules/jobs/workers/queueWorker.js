@@ -1,7 +1,7 @@
 const redis = require('../../../config/redis');
 const queueService = require('../../queue/queueService');
 
-const BATCH_SIZE = Number(process.env.QUEUE_BATCH_SIZE || 2);
+const BATCH_SIZE = Number(process.env.QUEUE_BATCH_SIZE || 50);
 const SESSION_TTL_SECONDS = Number(process.env.QUEUE_SESSION_TTL_SECONDS || 20);
 const HARD_TIMEOUT_MINUTES = Number(process.env.QUEUE_HARD_TIMEOUT_MINUTES || 10);
 

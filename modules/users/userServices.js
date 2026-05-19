@@ -4,14 +4,7 @@ const PrismaApiFeatures = require('../../utils/PrismaApiFeatures');
 const bcrypt = require('bcrypt');
 
 class UserService {
-  /**
-   * GET ALL USERS (Admin only)
-   * Hỗ trợ filter, sort, field selection và phân trang qua query string.
-   *
-   * Ví dụ:
-   *   GET /api/users?role=ADMIN&sort=created_at:asc&fields=id,email,role&page=1&limit=20
-   *   GET /api/users?created_at[gte]=2025-01-01&sort=full_name:asc
-   */
+  
   async getAllUsers(query) {
     const features = new PrismaApiFeatures(query)
       .filter()

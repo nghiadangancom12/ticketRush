@@ -20,32 +20,4 @@ router.post('/checkout', verifyToken, verifyQueueAccess, validate(checkoutSchema
 router.post('/return', verifyToken, BookingController.returnSeats);
 
 
-// 3. API TEST: Dành riêng cho kịch bản bullmq-stress-test.yml (Bỏ qua DB, nhồi thẳng vào Queue)
-router.post('/test-email-stress', async (req, res, next) => {
-  try {
-    const { emailQueue } = require('../jobs/queues');
-
-    // 1. Hứng dữ liệu từ kịch bản Artillery (hoặc Postman)
-    // Nếu không có, dự phòng bằng dữ liệu ngẫu nhiên để không bị sập
-    const email = req.body.email || `khachhang_${Math.floor(Math.random() * 1000)}@gmail.com`;
-    const orderId = req.body.orderId || ('TEST-ORDER-' + Math.floor(Math.random() * 1000000));
-
-    // 2. Nhồi đầy đủ cả orderId và email vào Queue
-    await emailQueue.add('send-ticket-email', {
-      orderId: orderId,
-      email: email // THÊM DÒNG NÀY LÀ CỰC KỲ QUAN TRỌNG
-    }, {
-      attempts: 3,
-      backoff: { type: 'exponential', delay: 2000 }
-    });
-
-    res.status(201).json({
-      status: 'success',
-      message: `Đã nhồi job gửi email cho ${email} (Order: ${orderId}).`
-    });
-  } catch (err) {
-    next(err);
-  }
-});
-
 module.exports = router;

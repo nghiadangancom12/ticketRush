@@ -1,4 +1,4 @@
-// file: modules/socket/socketHandler.js
+
 const { Server: SocketIOServer } = require('socket.io');
 
 const initializeSocket = (server) => {

@@ -127,6 +127,8 @@ const CATEGORIES_DATA = [
   { name: 'Hội thảo', description: 'Các buổi hội thảo, workshop, tech summit' },
   { name: 'Kịch nghệ', description: 'Nhạc kịch, kịch nói, show biểu diễn nghệ thuật' },
   { name: 'Thể thao', description: 'Các sự kiện thể thao, giải đấu, thế vận hội' },
+  { name: 'Triển lãm', description: 'Triển lãm nghệ thuật, bảo tàng, không gian văn hóa' },
+  { name: 'Hài độc thoại', description: 'Các show hài độc thoại, stand-up comedy' },
   { name: 'Khác', description: 'Các sự kiện khác' },
 ];
 
@@ -230,6 +232,37 @@ function getEventsData(adminId, categoriesMap) {
       zones: [
         { name: 'Khán đài A', price: 500_000, total_seats: 200 },
         { name: 'Khán đài B', price: 200_000, total_seats: 500 },
+      ],
+    },
+    // ── Sự kiện 7: Triển lãm (mới) ───────────────────────────────────────
+    {
+      title:       'Triển Lãm Tranh: Mùa Thu Hà Nội',
+      description: 'Không gian nghệ thuật trưng bày hơn 100 tác phẩm hội họa đương đại về Hà Nội.',
+      image_url:   'https://images.unsplash.com/photo-1536924940846-227afb31e2a5?w=800',
+      start_time:  new Date('2025-08-10T08:00:00+07:00'),
+      location:    'Bảo tàng Mỹ thuật Việt Nam, Hà Nội',
+      status:      'PUBLISHED',
+      admin_id:    adminId,
+      category_id: categoriesMap['Triển lãm'].id,
+      zones: [
+        { name: 'Vé vào cửa', price: 150_000, total_seats: 1000 },
+        { name: 'Vé hướng dẫn viên VIP', price: 500_000, total_seats: 50 },
+      ],
+    },
+    // ── Sự kiện 8: Hài độc thoại (mới) ───────────────────────────────────
+    {
+      title:       'Sài Gòn Tếu: Đêm Cười Mùa Hè',
+      description: 'Đêm hài độc thoại với những danh hài nổi tiếng nhất, mang đến tiếng cười sảng khoái.',
+      image_url:   'https://images.unsplash.com/photo-1585699324551-f6c309eedeca?w=800',
+      start_time:  new Date('2025-07-25T20:00:00+07:00'),
+      location:    'Nhà hát Hòa Bình, TP. Hồ Chí Minh',
+      status:      'PUBLISHED',
+      admin_id:    adminId,
+      category_id: categoriesMap['Hài độc thoại'].id,
+      zones: [
+        { name: 'VVIP (Bàn đầu)', price: 1_200_000, total_seats: 40 },
+        { name: 'VIP', price: 800_000, total_seats: 120 },
+        { name: 'Standard', price: 400_000, total_seats: 300 },
       ],
     },
   ];

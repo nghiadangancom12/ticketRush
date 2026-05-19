@@ -75,7 +75,7 @@ class BookingService {
 
             // 🌟 CHỐT CHẶN 2: Khóa Ghế ngay lập tức bằng Row-Level Locking
             const seatIds = lockedSeats.map(s => s.id);
-            await bookingRepo.getSeatsForUpdate(seatIds, tx); // Tái sử dụng hàm lấy ghế + FOR UPDATE
+            await bookingRepo.getSeatsForUpdate(seatIds, tx); 
 
             // 2. Tính tiền và tạo Đơn hàng
             const totalAmount = lockedSeats.reduce((sum, seat) => sum + Number(seat.zones.price), 0);
@@ -123,10 +123,9 @@ class BookingService {
 
     async returnSeats(userId, eventId) {
         return await prisma.$transaction(async (tx) => {
-            // Khóa User nhẹ nhàng
             await bookingRepo.lockUser(userId, tx);
 
-            const lockedSeats = await bookingRepo.getLockedSeatsForCheckout(userId, eventId, tx); // Tái sử dụng hàm
+            const lockedSeats = await bookingRepo.getLockedSeatsForCheckout(userId, eventId, tx); 
 
             if (lockedSeats.length === 0) {
                 return { releasedIds: [] };
