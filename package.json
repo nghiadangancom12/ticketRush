@@ -2,13 +2,12 @@
   "devDependencies": {
     "ioredis-mock": "^8.13.1",
     "jest": "^30.3.0",
-    
+    "prisma": "^7.6.0",
     "supertest": "^7.2.2"
   },
   "dependencies": {
     "@prisma/adapter-pg": "^7.6.0",
     "@prisma/client": "^7.6.0",
-    "prisma": "^7.6.0",
     "axios": "^1.14.0",
     "bcrypt": "^6.0.0",
     "bullmq": "^5.76.0",
@@ -36,10 +35,6 @@
     "zod": "^4.3.6"
   },
   "scripts": {
-    "start": "npm run start:prod", 
-    "build": "npx prisma generate",
-  
-    
     "start:dev": "NODE_ENV=development nodemon server.js",
     "start:prod": "NODE_ENV=production node server.js",
     "test": "jest --detectOpenHandles",
