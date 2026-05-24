@@ -10,7 +10,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Queue Admission Rush</title>
+    <title>neon Connection Storm</title>
     <style>
       * {
         margin: 0;
@@ -473,7 +473,7 @@
       <header>
         <h1>
           <svg width="50" height="45" viewBox="0 0 50 45" fill="none"><path d="M31.968 34.681a2.007 2.007 0 002.011-2.003c0-1.106-.9-2.003-2.011-2.003a2.007 2.007 0 00-2.012 2.003c0 1.106.9 2.003 2.012 2.003z" fill="white"></path><path d="M39.575 0L27.154 16.883 16.729 9.31 0 45h50L39.575 0zM23.663 37.17l-2.97-4.072v4.072h-2.751V22.038l2.75 1.989v7.66l3.659-5.014 2.086 1.51-3.071 4.21 3.486 4.776h-3.189v.001zm8.305.17c-2.586 0-4.681-2.088-4.681-4.662 0-1.025.332-1.972.896-2.743l4.695-6.435 2.086 1.51-2.239 3.07a4.667 4.667 0 013.924 4.6c0 2.572-2.095 4.66-4.681 4.66z" fill="white"></path></svg>
-          Queue Admission Rush
+          neon Connection Storm
         </h1>
       </header>
 
@@ -484,29 +484,29 @@
             <i class="fas fa-globe icon"></i>
             <h4>Total Requests</h4>
             <div class="metric-value">
-              52
+              6736
               
             </div>
           </div>
           
           
-            <div class="metric-card success">
-              <i class="fas fa-check-circle icon"></i>
+            <div class="metric-card danger">
+              <i class="fas fa-times-circle icon"></i>
               <h4>Failed Requests</h4>
-              <div class="metric-value">0</div>
+              <div class="metric-value">406</div>
             </div> 
             
           
-          <div class="metric-card success">
+          <div class="metric-card danger">
             <i class="fas fa-exclamation-triangle icon"></i>
             <h4>Breached Thresholds</h4>
-            <div class="metric-value">0</div>
+            <div class="metric-value">6</div>
           </div>
           
-          <div class="metric-card success">
+          <div class="metric-card danger">
             <i class="fas fa-eye icon"></i>
             <h4>Failed Checks</h4>
-            <div class="metric-value">0</div>
+            <div class="metric-value">406</div>
           </div>
         </div>
 
@@ -529,11 +529,13 @@
                     
                       <th>Med</th>
                     
-                      <th>Max</th>
-                    
                       <th>P(90)</th>
                     
                       <th>P(95)</th>
+                    
+                      <th>P(99)</th>
+                    
+                      <th>Max</th>
                      
                   </tr>
                 </thead>
@@ -542,107 +544,102 @@
                   <tr>
                     <td><b>http_req_blocked</b></td>
                     
-                      <td class="">0.58</td>
+                      <td class="">0.07</td>
                     
                       <td class="">0.00</td>
                     
-                      <td class="">0.55</td>
+                      <td class="">0.00</td>
                     
-                      <td class="">1.13</td>
+                      <td class="">0.00</td>
                     
-                      <td class="">1.12</td>
+                      <td class="">0.59</td>
                     
-                      <td class="">1.12</td>
+                      <td class="">1.64</td>
+                    
+                      <td class="">6.04</td>
                      
                   </tr>
                   
                   <tr>
                     <td><b>http_req_connecting</b></td>
                     
-                      <td class="">0.54</td>
+                      <td class="">0.05</td>
                     
                       <td class="">0.00</td>
                     
-                      <td class="">0.55</td>
+                      <td class="">0.00</td>
                     
-                      <td class="">1.12</td>
+                      <td class="">0.00</td>
                     
-                      <td class="">1.12</td>
+                      <td class="">0.00</td>
                     
-                      <td class="">1.12</td>
+                      <td class="">1.28</td>
+                    
+                      <td class="">6.04</td>
                      
                   </tr>
                   
                   <tr>
                     <td><b>http_req_duration</b></td>
                     
-                      <td class="">354.40</td>
+                      <td class="">5745.02</td>
                     
-                      <td class="">41.06</td>
+                      <td class="">106.31</td>
                     
-                      <td class="">361.42</td>
+                      <td class="">2718.09</td>
                     
-                      <td class="">468.22</td>
+                      <td class="">7472.45</td>
                     
-                      <td class="">446.32</td>
+                      <td class="">32706.99</td>
                     
-                      <td class="">456.01</td>
-                     
-                  </tr>
-                  
-                  <tr>
-                    <td><b>http_req_duration{endpoint:queue_join}</b></td>
+                      <td class="">60000.61</td>
                     
-                      <td class="">361.04</td>
-                    
-                      <td class="">61.19</td>
-                    
-                      <td class="">362.44</td>
-                    
-                      <td class="">468.22</td>
-                    
-                      <td class="">446.32</td>
-                    
-                      <td class="good">457.75</td>
+                      <td class="">60003.17</td>
                      
                   </tr>
                   
                   <tr>
                     <td><b>http_req_receiving</b></td>
                     
-                      <td class="">0.23</td>
+                      <td class="">0.22</td>
                     
                       <td class="">0.00</td>
                     
                       <td class="">0.00</td>
                     
-                      <td class="">1.51</td>
+                      <td class="">0.63</td>
                     
-                      <td class="">0.74</td>
+                      <td class="">0.69</td>
                     
-                      <td class="">0.85</td>
+                      <td class="">1.07</td>
+                    
+                      <td class="">5.13</td>
                      
                   </tr>
                   
                   <tr>
                     <td><b>http_req_sending</b></td>
                     
-                      <td class="">0.09</td>
+                      <td class="">0.05</td>
                     
                       <td class="">0.00</td>
                     
                       <td class="">0.00</td>
                     
-                      <td class="">0.64</td>
+                      <td class="">0.00</td>
                     
-                      <td class="">0.55</td>
+                      <td class="">0.59</td>
                     
-                      <td class="">0.55</td>
+                      <td class="">0.67</td>
+                    
+                      <td class="">6.00</td>
                      
                   </tr>
                   
                   <tr>
                     <td><b>http_req_tls_handshaking</b></td>
+                    
+                      <td class="">0.00</td>
                     
                       <td class="">0.00</td>
                     
@@ -661,51 +658,152 @@
                   <tr>
                     <td><b>http_req_waiting</b></td>
                     
-                      <td class="">354.08</td>
+                      <td class="">5744.74</td>
                     
-                      <td class="">41.06</td>
+                      <td class="">106.31</td>
                     
-                      <td class="">361.42</td>
+                      <td class="">2717.69</td>
                     
-                      <td class="">468.22</td>
+                      <td class="">7472.08</td>
                     
-                      <td class="">446.32</td>
+                      <td class="">32706.99</td>
                     
-                      <td class="">456.01</td>
+                      <td class="">60000.58</td>
+                    
+                      <td class="">60003.17</td>
                      
                   </tr>
                   
                   <tr>
                     <td><b>iteration_duration</b></td>
                     
-                      <td class="">1362.35</td>
+                      <td class="">16733.65</td>
                     
-                      <td class="">1062.57</td>
+                      <td class="">900.17</td>
                     
-                      <td class="">1363.43</td>
+                      <td class="">12989.78</td>
                     
-                      <td class="">1469.21</td>
+                      <td class="">22962.46</td>
                     
-                      <td class="">1447.32</td>
+                      <td class="">63164.25</td>
                     
-                      <td class="">1458.52</td>
+                      <td class="">93258.53</td>
+                    
+                      <td class="">112180.05</td>
                      
                   </tr>
                   
                   <tr>
-                    <td><b>join_latency_ms</b></td>
+                    <td><b>storm_cycle_latency_ms</b></td>
                     
-                      <td class="">361.04</td>
+                      <td class="">16723.02</td>
                     
-                      <td class="">61.19</td>
+                      <td class="">890.00</td>
                     
-                      <td class="">362.44</td>
+                      <td class="">12980.00</td>
                     
-                      <td class="">468.22</td>
+                      <td class="">22951.60</td>
                     
-                      <td class="">446.32</td>
+                      <td class="">63153.50</td>
                     
-                      <td class="">457.75</td>
+                      <td class="">93248.48</td>
+                    
+                      <td class="">112169.00</td>
+                     
+                  </tr>
+                  
+                  <tr>
+                    <td><b>storm_cycle_latency_ms{profile:connection_storm}</b></td>
+                    
+                      <td class="">16723.02</td>
+                    
+                      <td class="">890.00</td>
+                    
+                      <td class="">12980.00</td>
+                    
+                      <td class="">22951.60</td>
+                    
+                      <td class="failed">63153.50</td>
+                    
+                      <td class="">93248.48</td>
+                    
+                      <td class="">112169.00</td>
+                     
+                  </tr>
+                  
+                  <tr>
+                    <td><b>storm_read_latency_ms</b></td>
+                    
+                      <td class="">7066.58</td>
+                    
+                      <td class="">106.31</td>
+                    
+                      <td class="">3218.40</td>
+                    
+                      <td class="">7917.80</td>
+                    
+                      <td class="">52246.16</td>
+                    
+                      <td class="">60000.89</td>
+                    
+                      <td class="">60003.17</td>
+                     
+                  </tr>
+                  
+                  <tr>
+                    <td><b>storm_read_latency_ms{profile:connection_storm}</b></td>
+                    
+                      <td class="">7066.58</td>
+                    
+                      <td class="">106.31</td>
+                    
+                      <td class="">3218.40</td>
+                    
+                      <td class="">7917.80</td>
+                    
+                      <td class="failed">52246.16</td>
+                    
+                      <td class="">60000.89</td>
+                    
+                      <td class="">60003.17</td>
+                     
+                  </tr>
+                  
+                  <tr>
+                    <td><b>storm_write_latency_ms</b></td>
+                    
+                      <td class="">4618.69</td>
+                    
+                      <td class="">121.12</td>
+                    
+                      <td class="">2431.67</td>
+                    
+                      <td class="">4081.74</td>
+                    
+                      <td class="">29387.25</td>
+                    
+                      <td class="">58277.19</td>
+                    
+                      <td class="">60001.33</td>
+                     
+                  </tr>
+                  
+                  <tr>
+                    <td><b>storm_write_latency_ms{profile:connection_storm}</b></td>
+                    
+                      <td class="">4618.69</td>
+                    
+                      <td class="">121.12</td>
+                    
+                      <td class="">2431.67</td>
+                    
+                      <td class="">4081.74</td>
+                    
+                      <td class="failed">29387.25</td>
+                    
+                      <td class="">58277.19</td>
+                    
+                      <td class="">60001.33</td>
                      
                   </tr>
                   
@@ -727,25 +825,168 @@
                 <tbody>
                   
                   <tr>
+                    <td><b>db_error_rate</b></td>
+                    
+                      <td
+                        class=""
+                        title="Success rate (aligns with Pass Count)"
+                      >0.00%</td>
+                      <td class="">0.00</td>
+                      <td class="">6736.00</td>
+                  </tr>
+                  
+                  <tr>
+                    <td><b>db_pool_pressure_rate</b></td>
+                    
+                      <td
+                        class=""
+                        title="Success rate (aligns with Pass Count)"
+                      >0.00%</td>
+                      <td class="">0.00</td>
+                      <td class="">6736.00</td>
+                  </tr>
+                  
+                  <tr>
                     <td><b>http_req_failed</b></td>
                     
                       <td
-                        class="good"
+                        class=""
                         title="Failure rate (for *_failed metrics; aligns with Fail Count)"
-                      >0.00%</td>
-                      <td class="">52.00</td>
-                      <td class="">0.00</td>
+                      >6.03%</td>
+                      <td class="">6330.00</td>
+                      <td class="">406.00</td>
+                  </tr>
+                  
+                  <tr>
+                    <td><b>request_timeout_rate</b></td>
+                    
+                      <td
+                        class=""
+                        title="Success rate (aligns with Pass Count)"
+                      >2.09%</td>
+                      <td class="">141.00</td>
+                      <td class="">6595.00</td>
                   </tr>
                   
                   <tr>
                     <td><b>server_error_rate</b></td>
                     
                       <td
+                        class=""
+                        title="Success rate (aligns with Pass Count)"
+                      >3.93%</td>
+                      <td class="">265.00</td>
+                      <td class="">6471.00</td>
+                  </tr>
+                  
+                  <tr>
+                    <td><b>storm_hold_conflict_rate</b></td>
+                    
+                      <td
+                        class=""
+                        title="Success rate (aligns with Pass Count)"
+                      >38.92%</td>
+                      <td class="">532.00</td>
+                      <td class="">835.00</td>
+                  </tr>
+                  
+                  <tr>
+                    <td><b>storm_hold_success_rate</b></td>
+                    
+                      <td
+                        class=""
+                        title="Success rate (aligns with Pass Count)"
+                      >59.03%</td>
+                      <td class="">807.00</td>
+                      <td class="">560.00</td>
+                  </tr>
+                  
+                  <tr>
+                    <td><b>storm_pool_pressure_rate</b></td>
+                    
+                      <td
+                        class=""
+                        title="Success rate (aligns with Pass Count)"
+                      >0.00%</td>
+                      <td class="">0.00</td>
+                      <td class="">6735.00</td>
+                  </tr>
+                  
+                  <tr>
+                    <td><b>storm_pool_pressure_rate{profile:connection_storm}</b></td>
+                    
+                      <td
                         class="good"
                         title="Success rate (aligns with Pass Count)"
                       >0.00%</td>
                       <td class="">0.00</td>
-                      <td class="">52.00</td>
+                      <td class="">6735.00</td>
+                  </tr>
+                  
+                  <tr>
+                    <td><b>storm_request_failed_rate</b></td>
+                    
+                      <td
+                        class=""
+                        title="Failure rate (for *_failed metrics; aligns with Fail Count)"
+                      >6.03%</td>
+                      <td class="">6329.00</td>
+                      <td class="">406.00</td>
+                  </tr>
+                  
+                  <tr>
+                    <td><b>storm_request_failed_rate{profile:connection_storm}</b></td>
+                    
+                      <td
+                        class="failed"
+                        title="Failure rate (for *_failed metrics; aligns with Fail Count)"
+                      >6.03%</td>
+                      <td class="">6329.00</td>
+                      <td class="">406.00</td>
+                  </tr>
+                  
+                  <tr>
+                    <td><b>storm_server_error_rate</b></td>
+                    
+                      <td
+                        class=""
+                        title="Success rate (aligns with Pass Count)"
+                      >3.93%</td>
+                      <td class="">265.00</td>
+                      <td class="">6470.00</td>
+                  </tr>
+                  
+                  <tr>
+                    <td><b>storm_server_error_rate{profile:connection_storm}</b></td>
+                    
+                      <td
+                        class="failed"
+                        title="Success rate (aligns with Pass Count)"
+                      >3.93%</td>
+                      <td class="">265.00</td>
+                      <td class="">6470.00</td>
+                  </tr>
+                  
+                  <tr>
+                    <td><b>storm_timeout_rate</b></td>
+                    
+                      <td
+                        class=""
+                        title="Success rate (aligns with Pass Count)"
+                      >2.09%</td>
+                      <td class="">141.00</td>
+                      <td class="">6594.00</td>
+                  </tr>
+                  
+                  <tr>
+                    <td><b>storm_timeout_rate{profile:connection_storm}</b></td>
+                    
+                      <td
+                        class="failed"
+                        title="Success rate (aligns with Pass Count)"
+                      >2.09%</td>
+                      <td class="">141.00</td>
+                      <td class="">6594.00</td>
                   </tr>
                   
                 </tbody>
@@ -764,10 +1005,10 @@
                 <tbody>
                   
                   <tr>
-                    <td><b>queue_in_queue_count</b></td>
+                    <td><b>server_error_count</b></td>
                     
                     
-                      <td class="">50.00</td>
+                      <td class="">265.00</td>
                       
                   </tr>
                   
@@ -790,11 +1031,11 @@
                   <i class="fas fa-eye icon"></i>
                   <div class="stat-row">
                     <span class="stat-label">Passed</span>
-                    <span class="stat-value">52</span>
+                    <span class="stat-value">6330</span>
                   </div>
                   <div class="stat-row">
                     <span class="stat-label">Failed</span>
-                    <span class="stat-value">0</span>
+                    <span class="stat-value">406</span>
                   </div>
                 </div>
               
@@ -805,11 +1046,11 @@
                   <i class="fas fa-redo icon"></i>
                   <div class="stat-row">
                     <span class="stat-label">Total</span>
-                    <span class="stat-value">50</span>
+                    <span class="stat-value">1367</span>
                   </div>
                   <div class="stat-row">
                     <span class="stat-label">Rate</span>
-                    <span class="stat-value">26.96/s</span>
+                    <span class="stat-value">5.68/s</span>
                   </div>
                 </div>
               
@@ -819,11 +1060,11 @@
                 <i class="fas fa-user icon"></i>
                 <div class="stat-row">
                   <span class="stat-label">Min</span>
-                  <span class="stat-value">50</span>
+                  <span class="stat-value">1</span>
                 </div>
                 <div class="stat-row">
                   <span class="stat-label">Max</span>
-                  <span class="stat-value">50</span>
+                  <span class="stat-value">300</span>
                 </div>
               </div>
 
@@ -833,14 +1074,14 @@
                 <div class="stat-row">
                   <span class="stat-label">Total</span>
                   <span class="stat-value">
-                    52
+                    6736
                     
                   </span>
                 </div>
                 <div class="stat-row">
                   <span class="stat-label">Rate</span>
                   <span class="stat-value">
-                    28.04/s
+                    27.99/s
                     
                   </span>
                 </div>
@@ -851,11 +1092,11 @@
                 <i class="fas fa-cloud-download-alt icon"></i>
                 <div class="stat-row">
                   <span class="stat-label">Total</span>
-                  <span class="stat-value">0.07 MB</span>
+                  <span class="stat-value">21.00 MB</span>
                 </div>
                 <div class="stat-row">
                   <span class="stat-label">Rate</span>
-                  <span class="stat-value">0.04 mB/s</span>
+                  <span class="stat-value">0.09 mB/s</span>
                 </div>
               </div>
 
@@ -864,7 +1105,7 @@
                 <i class="fas fa-cloud-upload-alt icon"></i>
                 <div class="stat-row">
                   <span class="stat-label">Total</span>
-                  <span class="stat-value">0.02 MB</span>
+                  <span class="stat-value">2.42 MB</span>
                 </div>
                 <div class="stat-row">
                   <span class="stat-label">Rate</span>
@@ -910,35 +1151,6 @@
               </div>
             
             
-              
-              <h2 class="group-header" onclick="tabClickHandler(event)">Group - teardown</h2>
-              <div>
-                
-                  <table>
-                    <thead>
-                      <tr>
-                        <th>Check Name</th>
-                        <th>Passes</th>
-                        <th>Failures</th>
-                        <th>% Pass</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      
-                        <tr class="checkDetails">
-                          <td width="50%">status in [200]</td>
-                          <td class="good">1</td>
-                          <td class="">0</td>
-                          <td class="">100.00</td>
-                        </tr>
-                      
-                    </tbody>
-                  </table>
-                
-                
-              </div>
-            
-            
 
             <h2>Other Checks</h2>
             <table>
@@ -953,10 +1165,17 @@
               <tbody>
                 
                   <tr class="checkDetails">
-                    <td width="50%">status in [200,202,429]</td>
-                    <td class="good">50</td>
-                    <td class="">0</td>
-                    <td class="">100.00</td>
+                    <td width="50%">status in [200]</td>
+                    <td class="">4990</td>
+                    <td class="failed">378</td>
+                    <td class="failed">92.96</td>
+                  </tr>
+                
+                  <tr class="checkDetails">
+                    <td width="50%">status in [200,400]</td>
+                    <td class="">1339</td>
+                    <td class="failed">28</td>
+                    <td class="failed">97.95</td>
                   </tr>
                 
               </tbody>
