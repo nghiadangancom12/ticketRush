@@ -1,22 +1,24 @@
-const request = require('supertest');
-const app = require('../app'); 
-
 // 1. Dùng ioredis-mock thay vì kết nối Redis thật
+// (jest.mock được hoist lên đầu file tự động bởi Jest)
 jest.mock('ioredis', () => require('ioredis-mock'));
-const redis = require('../config/redis');
-// 2. Mock (Giả lập) Middleware Auth để không cần phải tạo Token JWT thật mỗi lần test
-jest.mock('../modules/auth/auth.middleware', () => ({
+
+// 2. Mock Middleware Auth để không cần Token JWT thật mỗi lần test
+jest.mock('../middlewares/authMiddleware', () => ({
   verifyToken: (req, res, next) => {
     // Giả vờ như đã đăng nhập thành công với user_123
-    req.user = { id: 'user_123' }; 
+    req.user = { id: 'user_123' };
     next();
   },
   restrictTo: () => (req, res, next) => next(), // Giả vờ luôn có quyền Admin
-  
-  // 👉 THÊM DÒNG NÀY VÀO: Giả lập luôn hàm isAdmin cho qua trót lọt
-  isAdmin: (req, res, next) => next(), 
 
+  // Giả lập hàm isAdmin cho qua trót lọt
+  isAdmin: (req, res, next) => next(),
 }));
+
+const request = require('supertest');
+const app = require('../app');
+const redis = require('../config/redis');
+
 
 // Bắt đầu nhóm kịch bản Test cho Queue
 describe('Kiểm thử API Virtual Queue', () => {

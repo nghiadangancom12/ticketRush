@@ -1,53 +1,41 @@
 const prisma = require('../../config/database');
 const AppError = require('../errorHandling/AppError');
-const bookingRepo = require('./BookingRepository'); // Import file Repository đã tối ưu
+const bookingRepo = require('./BookingRepository'); 
 const queueService = require('../queue/queueService');
 const { seatReleaseQueue, emailQueue } = require('../jobs/queues');
 
 class BookingService {
+    /**
+     * GIỮ GHẾ (Đã chuyển sang Stored Procedure tối ưu < 2ms)
+     */
     async holdSeats(userId, eventId, seatIds) {
-        // Lọc trùng lặp ID ghế ngay từ đầu
+        // 1. Khử trùng lặp phần tử mảng ngay từ đầu
         const uniqueSeatIds = [...new Set(seatIds)];
 
-        return await prisma.$transaction(async (tx) => {
-            // 🌟 1. CHỐT CHẶN HACKER: Khóa User Record (Ủy quyền cho Repo)
-            await bookingRepo.lockUser(userId, tx);
+        try {
+            // 2. Ủy quyền thực thi cho Stored Procedure dưới Neon DB thông qua Repository
+            const result = await bookingRepo.holdSeatsViaProcedure(userId, eventId, uniqueSeatIds);
+            const dbResult = result[0];
 
-            // 2. NGHIỆP VỤ: Kiểm tra Event
-            const event = await bookingRepo.getEventById(eventId, tx);
-            if (!event) throw new AppError('Sự kiện không tồn tại.', 404);
-
-            // 🌟 3. LỖI ĐẾM VÉ: Kiểm tra giới hạn vé
-            const otherSeatsUserHolds = await bookingRepo.countOtherSeatsHeld(userId, eventId, uniqueSeatIds, tx);
-            if (otherSeatsUserHolds + uniqueSeatIds.length > 4) {
-                throw new AppError('Bạn chỉ được giữ/mua tổng cộng tối đa 4 vé trong 1 sự kiện.', 400);
+            // 3. Xử lý kết quả trả về từ database
+            if (dbResult.status === 'SUCCESS') {
+                // Trả về mảng các ID ghế đã được giữ thành công
+                return uniqueSeatIds;
+            } else {
+                // Bắn lỗi nghiệp vụ chính xác (Ví dụ: vượt quá 4 vé, hoặc ghế đã có người giữ)
+                throw new AppError(dbResult.message, 400);
             }
 
-            // 4. NGHIỆP VỤ: Khóa ghế và kiểm tra trạng thái
-            const lockedSeatsQuery = await bookingRepo.getSeatsForUpdate(uniqueSeatIds, tx);
-
-            if (lockedSeatsQuery.length !== uniqueSeatIds.length) {
-                throw new AppError('Một hoặc nhiều ghế không tồn tại hoặc không hợp lệ.', 400);
-            }
-
-            // Xử lý Re-hold thông minh
-            const unavailable = lockedSeatsQuery.filter(s => {
-                if (s.status === 'AVAILABLE') return false;
-                if (s.status === 'LOCKED' && String(s.locked_by) === String(userId)) return false;
-                return true;
-            });
-            
-            if (unavailable.length > 0) {
-                throw new AppError('Một hoặc nhiều ghế đã bị người khác giữ. Vui lòng chọn ghế khác.', 400);
-            }
-
-            // 5. Cập nhật trạng thái ghế → LOCKED
-            await bookingRepo.updateSeatsToLocked(uniqueSeatIds, userId, new Date(), tx);
-
-            return uniqueSeatIds;
-        });
+        } catch (error) {
+            if (error instanceof AppError) throw error;
+            console.error('[BookingService Error]:', error.message);
+            throw new AppError('Hệ thống bận, không thể thực hiện giữ ghế lúc này.', 500);
+        }
     }
 
+    /**
+     * Đặt lịch nhả ghế tự động qua BullMQ nếu quá thời gian thanh toán
+     */
     async scheduleRelease(userId, eventId, seatIds) {
         await seatReleaseQueue.add(
             'release-seats',
@@ -61,27 +49,25 @@ class BookingService {
         console.log(`[BullMQ] ⏰ Đã lên lịch nhả ghế sau 60s cho user ${userId}`);
     }
 
+    /**
+     * THANH TOÁN & XUẤT VÉ (Giai đoạn chốt sổ - Đã có sẵn Row-level locking)
+     */
     async checkout(userId, eventId) {
         const result = await prisma.$transaction(async (tx) => {
-            // 🌟 CHỐT CHẶN 1: Khóa User
-            await bookingRepo.lockUser(userId, tx);
-
-            // 1. Tìm ghế đang LOCKED
+            // Kiểm tra và lấy danh sách ghế đang giữ
             const lockedSeats = await bookingRepo.getLockedSeatsForCheckout(userId, eventId, tx);
 
             if (lockedSeats.length === 0) {
                 throw new AppError('Bạn không có vé nào đang giữ hoặc vé đã hết hạn thanh toán.', 400);
             }
 
-            // 🌟 CHỐT CHẶN 2: Khóa Ghế ngay lập tức bằng Row-Level Locking
             const seatIds = lockedSeats.map(s => s.id);
-            await bookingRepo.getSeatsForUpdate(seatIds, tx); 
-
-            // 2. Tính tiền và tạo Đơn hàng
+            
+            // Tính tiền và tạo Đơn hàng
             const totalAmount = lockedSeats.reduce((sum, seat) => sum + Number(seat.zones.price), 0);
             const newOrder = await bookingRepo.createOrder(userId, eventId, totalAmount, tx);
 
-            // 3. In Vé (Chuẩn bị Data cho Bulk Insert)
+            // Sinh mã QR và tạo bản ghi Vé (Bulk Insert)
             const ticketData = lockedSeats.map(seat => {
                 const randomStr = Math.random().toString(36).substring(2, 10).toUpperCase();
                 const ticketCode = `TR-${randomStr.substring(0, 4)}-${randomStr.substring(4, 8)}`;
@@ -94,13 +80,13 @@ class BookingService {
             });
             await bookingRepo.createTickets(ticketData, tx);
 
-            // 4. Chốt ghế → SOLD
+            // Chốt cứng trạng thái ghế sang SOLD
             await bookingRepo.updateSeatsToSold(seatIds, tx);
 
             return { order: newOrder, seats: seatIds };
         });
 
-        // 5. Đẩy job gửi email vào BullMQ (Ngoài Transaction)
+        // Đẩy tác vụ gửi mail ra nền (Background) bên ngoài Transaction
         await emailQueue.add(
             'send-ticket-email',
             { orderId: result.order.id },
@@ -111,7 +97,7 @@ class BookingService {
         );
         console.log(`[BullMQ] 📧 Đã đẩy job gửi email cho đơn: ${result.order.id}`);
 
-        // 6. Giải phóng Virtual Queue Slot
+        // Giải phóng Slot trong phòng mua vé ảo của Redis
         try {
             await queueService.removeAllowed(eventId, userId);
         } catch (err) {
@@ -121,10 +107,11 @@ class BookingService {
         return result;
     }
 
+    /**
+     * CHỦ ĐỘNG TRẢ Vé / HUỶ THAO TÁC
+     */
     async returnSeats(userId, eventId) {
         return await prisma.$transaction(async (tx) => {
-            await bookingRepo.lockUser(userId, tx);
-
             const lockedSeats = await bookingRepo.getLockedSeatsForCheckout(userId, eventId, tx); 
 
             if (lockedSeats.length === 0) {
@@ -133,7 +120,7 @@ class BookingService {
 
             const ids = lockedSeats.map(s => s.id);
 
-            // Trả ghế về AVAILABLE
+            // Nhả ghế về AVAILABLE
             await bookingRepo.updateSeatsToAvailable(ids, tx);
 
             return { releasedIds: ids };
