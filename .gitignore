@@ -6,6 +6,8 @@ node_modules
 skills-lock.json
 *.md
 !README.md
+!tests/k6/README.neon.md
+!tests/k6/NEON_POSTGRES_FINAL_BENCHMARK.md
 
 .claude/
 .gitnexus

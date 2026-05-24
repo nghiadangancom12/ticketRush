@@ -43,8 +43,12 @@
     "seed": "node prisma/seed.js",
     "seed:k6": "node prisma/seed-k6.js",
     "seed:k6:neon": "cross-env K6_USER_COUNT=600 node prisma/seed-k6.js",
+    "db:k6:postgres:migrate": "cross-env DATABASE_URL=postgresql://user:password@localhost:5432/ticketrush DIRECT_URL=postgresql://user:password@localhost:5432/ticketrush npx prisma migrate deploy",
+    "seed:k6:postgres": "cross-env DATABASE_URL=postgresql://user:password@localhost:5432/ticketrush DIRECT_URL=postgresql://user:password@localhost:5432/ticketrush K6_USER_COUNT=600 node prisma/seed-k6.js",
     "k6:stack:up": "docker compose -f docker-compose.k6.yml up -d --build",
     "k6:stack:down": "docker compose -f docker-compose.k6.yml down",
+    "k6:postgres:stack:up": "docker compose -f docker-compose.k6.yml up -d --build",
+    "k6:postgres:stack:down": "docker compose -f docker-compose.k6.yml down",
     "k6:seat": "k6 run tests/k6/rush-seat-contention.js",
     "k6:queue": "k6 run tests/k6/rush-queue-admission.js",
     "k6:mixed": "k6 run tests/k6/rush-mixed-e2e.js",
@@ -53,10 +57,12 @@
     "k6:neon:stack:up": "docker compose -f docker-compose.k6.neon.yml up -d --build",
     "k6:neon:stack:down": "docker compose -f docker-compose.k6.neon.yml down",
     "k6:neon:smoke": "k6 run -e K6_CONFIG=tests/k6/config.neon.json tests/k6/neon-smoke.js",
-    "k6:neon:read": "k6 run -e K6_CONFIG=tests/k6/config.neon.json tests/k6/neon-read-ramp.js",
-    "k6:neon:locks": "k6 run -e K6_CONFIG=tests/k6/config.neon.json tests/k6/neon-lock-contention.js",
-    "k6:neon:write": "k6 run -e K6_CONFIG=tests/k6/config.neon.json tests/k6/neon-write-cycle.js",
-    "k6:neon:breakpoint": "k6 run -e K6_CONFIG=tests/k6/config.neon.json tests/k6/neon-breakpoint.js"
+    "k6:final:neon:read": "k6 run -e K6_CONFIG=tests/k6/config.final.neon.json -e BENCHMARK_MODE=read tests/k6/final-capacity-benchmark.js",
+    "k6:final:neon:write": "k6 run -e K6_CONFIG=tests/k6/config.final.neon.json -e BENCHMARK_MODE=write tests/k6/final-capacity-benchmark.js",
+    "k6:final:neon:mixed": "k6 run -e K6_CONFIG=tests/k6/config.final.neon.json -e BENCHMARK_MODE=mixed tests/k6/final-capacity-benchmark.js",
+    "k6:final:postgres:read": "k6 run -e K6_CONFIG=tests/k6/config.final.postgres.json -e BENCHMARK_MODE=read tests/k6/final-capacity-benchmark.js",
+    "k6:final:postgres:write": "k6 run -e K6_CONFIG=tests/k6/config.final.postgres.json -e BENCHMARK_MODE=write tests/k6/final-capacity-benchmark.js",
+    "k6:final:postgres:mixed": "k6 run -e K6_CONFIG=tests/k6/config.final.postgres.json -e BENCHMARK_MODE=mixed tests/k6/final-capacity-benchmark.js"
   },
   "prisma": {
     "seed": "node prisma/seed.js"
