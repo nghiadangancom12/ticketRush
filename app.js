@@ -21,6 +21,11 @@ const hpp = require('hpp');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 
+function positiveIntFromEnv(name, fallback) {
+  const value = Number(process.env[name]);
+  return Number.isFinite(value) && value > 0 ? value : fallback;
+}
+
 // 1. Set security HTTP headers (Helmet)
 app.use(helmet());
 
@@ -37,8 +42,12 @@ app.use(cors(corsOptions));
 
 // 2. Chống dội bom request (Rate Limiting)
 // Giới hạn 100 requests / 15 phút cho cùng 1 IP
+const apiRateLimitMax = positiveIntFromEnv(
+  'API_RATE_LIMIT_MAX',
+  process.env.NODE_ENV === 'production' ? 100 : 2000
+);
 const limiter = rateLimit({
-  max: process.env.NODE_ENV === 'production' ? 100 : 2000,
+  max: apiRateLimitMax,
   windowMs: 15 * 60 * 1000,
   // Bỏ cái dòng 'message: ...' cũ đi và thay bằng handler:
   handler: (req, res, next) => {

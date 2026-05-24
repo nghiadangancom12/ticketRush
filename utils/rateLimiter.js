@@ -4,9 +4,17 @@ const { RedisStore } = require('rate-limit-redis');
 const redis = require('../config/redis');
 const redisDisabled = process.env.DISABLE_REDIS === 'true';
 
+function positiveIntFromEnv(name, fallback) {
+  const value = Number(process.env[name]);
+  return Number.isFinite(value) && value > 0 ? value : fallback;
+}
+
+const queueJoinWindowMs = positiveIntFromEnv('QUEUE_JOIN_RATE_LIMIT_WINDOW_MS', 10 * 1000);
+const queueJoinMax = positiveIntFromEnv('QUEUE_JOIN_RATE_LIMIT_MAX', 3);
+
 const limiterOptions = {
-  windowMs: 10 * 1000, 
-  max: 3,              
+  windowMs: queueJoinWindowMs,
+  max: queueJoinMax,
   
   keyGenerator: (req, res) => {
     // 1. KÊNH WEB: Cookie 

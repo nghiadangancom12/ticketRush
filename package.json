@@ -1,5 +1,6 @@
 {
   "devDependencies": {
+    "cross-env": "^10.1.0",
     "ioredis-mock": "^8.13.1",
     "jest": "^30.3.0",
     "prisma": "^7.6.0",
@@ -24,6 +25,7 @@
     "multer": "^2.1.1",
     "node-cron": "^4.2.1",
     "nodemailer": "^8.0.5",
+    "nodemon": "^3.1.14",
     "pg": "^8.20.0",
     "qrcode": "^1.5.4",
     "rate-limit-redis": "^4.3.1",
@@ -35,18 +37,26 @@
     "zod": "^4.3.6"
   },
   "scripts": {
-    "start:dev": "NODE_ENV=development nodemon server.js",
+    "start:dev": "cross-env NODE_ENV=development nodemon server.js",
     "start:prod": "NODE_ENV=production node server.js",
     "test": "jest --detectOpenHandles",
     "seed": "node prisma/seed.js",
     "seed:k6": "node prisma/seed-k6.js",
+    "seed:k6:neon": "cross-env K6_USER_COUNT=600 node prisma/seed-k6.js",
     "k6:stack:up": "docker compose -f docker-compose.k6.yml up -d --build",
     "k6:stack:down": "docker compose -f docker-compose.k6.yml down",
     "k6:seat": "k6 run tests/k6/rush-seat-contention.js",
     "k6:queue": "k6 run tests/k6/rush-queue-admission.js",
     "k6:mixed": "k6 run tests/k6/rush-mixed-e2e.js",
     "k6:race": "k6 run tests/k6/race-condition.js",
-    "k6:stress": "k6 run tests/k6/stress-test.js"
+    "k6:stress": "k6 run tests/k6/stress-test.js",
+    "k6:neon:stack:up": "docker compose -f docker-compose.k6.neon.yml up -d --build",
+    "k6:neon:stack:down": "docker compose -f docker-compose.k6.neon.yml down",
+    "k6:neon:smoke": "k6 run -e K6_CONFIG=tests/k6/config.neon.json tests/k6/neon-smoke.js",
+    "k6:neon:read": "k6 run -e K6_CONFIG=tests/k6/config.neon.json tests/k6/neon-read-ramp.js",
+    "k6:neon:locks": "k6 run -e K6_CONFIG=tests/k6/config.neon.json tests/k6/neon-lock-contention.js",
+    "k6:neon:write": "k6 run -e K6_CONFIG=tests/k6/config.neon.json tests/k6/neon-write-cycle.js",
+    "k6:neon:breakpoint": "k6 run -e K6_CONFIG=tests/k6/config.neon.json tests/k6/neon-breakpoint.js"
   },
   "prisma": {
     "seed": "node prisma/seed.js"

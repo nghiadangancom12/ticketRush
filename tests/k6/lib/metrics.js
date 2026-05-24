@@ -32,7 +32,11 @@ export function buildSummary(data) {
     'race_success_count', 'race_conflict_count',
     'queue_allowed_count', 'queue_in_queue_count',
     'checkout_latency_ms', 'join_latency_ms',
-    'hold_latency_ms', 'stress_latency_ms'
+    'hold_latency_ms', 'stress_latency_ms',
+    'db_error_count', 'db_error_rate',
+    'db_pool_pressure_count', 'db_pool_pressure_rate',
+    'request_timeout_rate', 'first_request_latency_ms',
+    'db_write_cycle_latency_ms'
   ];
   const metrics = {};
   for (const k of keys) {

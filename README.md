@@ -109,11 +109,13 @@ NODE_ENV=development
 > **Email (tùy chọn):** Nếu muốn gửi email xác nhận, điền thêm `EMAIL_USER` và `EMAIL_PASS` (Gmail App Password).
 
 ---
+.\venv\Scripts\Activate.ps1
+
 
 ### Bước 3 — Khởi động Docker (Database + Redis)
 
 ```bash
-docker compose up -d postgres redis
+docker compose up -d redis
 ```
 
 Kiểm tra container đã chạy:
@@ -147,7 +149,7 @@ npm run seed
 
 ```bash
 # Chạy với nodemon (tự reload khi thay code)
-nodemon server.js
+node server.js
 ```
 
 Hoặc dùng script có sẵn:
