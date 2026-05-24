@@ -35,15 +35,15 @@
   "profiles": [
     {
       "profile": "mixed",
-      "readP95": 48.8167,
+      "readP95": 26.6142,
       "eventsP95": null,
       "landingP95": null,
       "detailP95": null,
-      "holdP95": 38.906389999999995,
-      "returnP95": 55.30152999999996,
-      "cycleP95": 90,
-      "failedRate": 0.12498958420131656,
-      "serverErrorRate": 0.12498958420131656,
+      "holdP95": 35.3614,
+      "returnP95": 33.82539999999999,
+      "cycleP95": 96,
+      "failedRate": 0,
+      "serverErrorRate": 0,
       "timeoutRate": 0
     }
   ]

@@ -39,11 +39,11 @@
       "eventsP95": null,
       "landingP95": null,
       "detailP95": null,
-      "holdP95": 17.626,
-      "returnP95": 46.8876,
-      "cycleP95": 64,
-      "failedRate": 0.5,
-      "serverErrorRate": 0.5,
+      "holdP95": 30.4819,
+      "returnP95": 34.53532999999999,
+      "cycleP95": 93,
+      "failedRate": 0,
+      "serverErrorRate": 0,
       "timeoutRate": 0
     }
   ]
