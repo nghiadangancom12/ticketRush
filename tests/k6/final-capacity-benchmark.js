@@ -231,7 +231,7 @@ function findMetric(data, name, tags = {}) {
 }
 
 function value(data, metricName, profile, valueName) {
-  const metric = findMetric(data, metricName, { profile });
+  const metric = findMetric(data, metricName, { profile }) || data.metrics[metricName];
   return metric && metric.values ? metric.values[valueName] : null;
 }
 

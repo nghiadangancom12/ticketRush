@@ -1,0 +1,50 @@
+{
+  "provider": "neon-cloud",
+  "mode": "mixed",
+  "duration": "5m",
+  "rates": {
+    "duration": "5m",
+    "read": {
+      "rate": 50,
+      "preAllocatedVUs": 60,
+      "maxVUs": 180
+    },
+    "write": {
+      "rate": 15,
+      "preAllocatedVUs": 60,
+      "maxVUs": 180
+    },
+    "mixed": {
+      "readRate": 30,
+      "writeRate": 5,
+      "readPreAllocatedVUs": 60,
+      "readMaxVUs": 180,
+      "writePreAllocatedVUs": 40,
+      "writeMaxVUs": 120
+    },
+    "thresholds": {
+      "readP95Ms": 2500,
+      "holdP95Ms": 4000,
+      "returnP95Ms": 4000,
+      "writeCycleP95Ms": 8000,
+      "requestFailedRate": 0.02,
+      "serverErrorRate": 0.01,
+      "timeoutRate": 0.001
+    }
+  },
+  "profiles": [
+    {
+      "profile": "mixed",
+      "readP95": 4693.36554,
+      "eventsP95": 4686.6852,
+      "landingP95": 4624.13248,
+      "detailP95": 4888.073869999999,
+      "holdP95": 4994.360659999999,
+      "returnP95": 5085.0663,
+      "cycleP95": 14434.799999999988,
+      "failedRate": 0.00030957356241776953,
+      "serverErrorRate": 0,
+      "timeoutRate": 0.00030957356241776953
+    }
+  ]
+}

@@ -63,6 +63,12 @@
     "k6:final:postgres:read": "k6 run -e K6_CONFIG=tests/k6/config.final.postgres.json -e BENCHMARK_MODE=read tests/k6/final-capacity-benchmark.js",
     "k6:final:postgres:write": "k6 run -e K6_CONFIG=tests/k6/config.final.postgres.json -e BENCHMARK_MODE=write tests/k6/final-capacity-benchmark.js",
     "k6:final:postgres:mixed": "k6 run -e K6_CONFIG=tests/k6/config.final.postgres.json -e BENCHMARK_MODE=mixed tests/k6/final-capacity-benchmark.js",
+    "k6:cloud:postgres:read": "k6 run -e K6_CONFIG=tests/k6/config.cloud.postgres.json -e BENCHMARK_MODE=read tests/k6/final-capacity-benchmark.js",
+    "k6:cloud:postgres:write": "k6 run -e K6_CONFIG=tests/k6/config.cloud.postgres.json -e BENCHMARK_MODE=write tests/k6/final-capacity-benchmark.js",
+    "k6:cloud:postgres:mixed": "k6 run -e K6_CONFIG=tests/k6/config.cloud.postgres.json -e BENCHMARK_MODE=mixed tests/k6/final-capacity-benchmark.js",
+    "k6:cloud:neon:read": "k6 run -e K6_CONFIG=tests/k6/config.cloud.neon.json -e BENCHMARK_MODE=read tests/k6/final-capacity-benchmark.js",
+    "k6:cloud:neon:write": "k6 run -e K6_CONFIG=tests/k6/config.cloud.neon.json -e BENCHMARK_MODE=write tests/k6/final-capacity-benchmark.js",
+    "k6:cloud:neon:mixed": "k6 run -e K6_CONFIG=tests/k6/config.cloud.neon.json -e BENCHMARK_MODE=mixed tests/k6/final-capacity-benchmark.js",
     "k6:storm:neon": "k6 run -e K6_CONFIG=tests/k6/config.final.neon.json tests/k6/connection-storm.js",
     "k6:storm:postgres": "k6 run -e K6_CONFIG=tests/k6/config.final.postgres.json tests/k6/connection-storm.js"
   },

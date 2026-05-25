@@ -1,23 +1,23 @@
 {
-  "provider": "postgres",
+  "provider": "neon-cloud",
   "profile": "connection_storm",
-  "maxVUs": 300,
+  "maxVUs": 200,
   "stages": [
     {
       "duration": "30s",
-      "target": 75
+      "target": 50
     },
     {
       "duration": "45s",
-      "target": 150
+      "target": 100
     },
     {
       "duration": "1m",
-      "target": 300
+      "target": 200
     },
     {
       "duration": "45s",
-      "target": 300
+      "target": 200
     },
     {
       "duration": "30s",
@@ -35,13 +35,13 @@
     "timeoutRate": 0.01
   },
   "metrics": {
-    "readP95": 1639.185024999999,
-    "writeP95": 1212.73558,
-    "cycleP95": 5759,
-    "failedRate": 0,
+    "readP95": 11184.437999999998,
+    "writeP95": 10990.492799999998,
+    "cycleP95": 39002.59999999991,
+    "failedRate": 0.00028534741047224997,
     "serverErrorRate": 0,
     "poolPressureRate": 0,
-    "timeoutRate": 0,
+    "timeoutRate": 0.00028534741047224997,
     "holdSuccessRate": null,
     "holdConflictRate": null
   }
