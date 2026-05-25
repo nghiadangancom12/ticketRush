@@ -36,7 +36,7 @@ const seatReleaseQueue = redisDisabled
  */
 const emailQueue = redisDisabled
   ? createNoopQueue('email-service')
-  : new Queue('email-service', { connection: defaultQueueOptions });
+  : new Queue('email-service', defaultQueueOptions);
 
 module.exports = {
   seatReleaseQueue,

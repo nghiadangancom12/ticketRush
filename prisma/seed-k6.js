@@ -22,7 +22,12 @@ if (!process.env.JWT_SECRET) {
   throw new Error('JWT_SECRET is required for k6 token generation');
 }
 
-const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: process.env.DATABASE_URL?.includes('render.com')
+    ? { rejectUnauthorized: false }
+    : undefined
+});
 const adapter = new PrismaPg(pool);
 const prisma = new PrismaClient({ adapter });
 
