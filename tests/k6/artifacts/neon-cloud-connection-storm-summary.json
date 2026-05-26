@@ -35,13 +35,13 @@
     "timeoutRate": 0.01
   },
   "metrics": {
-    "readP95": 11184.437999999998,
-    "writeP95": 10990.492799999998,
-    "cycleP95": 39002.59999999991,
-    "failedRate": 0.00028534741047224997,
+    "readP95": 10296.41339,
+    "writeP95": 10193.9019,
+    "cycleP95": 38393.35,
+    "failedRate": 0,
     "serverErrorRate": 0,
     "poolPressureRate": 0,
-    "timeoutRate": 0.00028534741047224997,
+    "timeoutRate": 0,
     "holdSuccessRate": null,
     "holdConflictRate": null
   }
