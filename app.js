@@ -85,6 +85,10 @@ app.get('/api/test-redis', async (req, res, next) => {
   }
 });
 
+// Health Check
+app.get('/health', (req, res) => res.status(200).json({ status: 'ok', service: 'core-api' }));
+app.get('/api/health', (req, res) => res.status(200).json({ status: 'ok', service: 'core-api' }));
+
 // === ROUTES (chuẩn MCS) ===
 app.use('/api/auth',      require('./modules/auth/authRoutes'));
 app.use('/api/users',     require('./modules/users/usersRoutes'));
@@ -92,7 +96,6 @@ app.use('/api/events',    require('./modules/events/eventRoutes'));
 app.use('/api/Booking',   require('./modules/Booking/BookingRoutes'));
 app.use('/api/booking',   require('./modules/Booking/BookingRoutes'));
 app.use('/api/orders',    require('./modules/orders/orderRoutes'));
-app.use('/api/queue',     require('./modules/queue/queueRoutes'));
 app.use('/api/customers', require('./modules/customers/customerRoutes'));
 app.use('/api/admin',      require('./modules/admin/AdminRoutes'));
 app.use('/api/categories', require('./modules/categories/categoryRoutes'));
@@ -101,6 +104,7 @@ app.use('/api/categories', require('./modules/categories/categoryRoutes'));
 app.use((req, res, next) => {
   next(new AppError(`Can't find ${req.originalUrl} on this server!`, 404));
 });
+
 
 // Global error handler
 app.use(globalErrorHandler);

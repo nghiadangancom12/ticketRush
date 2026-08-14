@@ -37,6 +37,26 @@ exports.leaveQueue = catchAsync(async (req, res) => {
   await queueService.removeAllowed(eventId, userId);
   return ResponseFactory.success(res, null, 'Đã rời khỏi hàng đợi thành công.');
 });
+
+/**
+ * GET /api/queue/:eventId/session/:userId
+ * Internal API cho các service khác (như Booking Service) kiểm tra quyền truy cập của user.
+ */
+exports.verifySession = catchAsync(async (req, res) => {
+  const { eventId, userId } = req.params;
+
+  const isActive = await queueService.isQueueActive(eventId);
+  if (!isActive) {
+    return ResponseFactory.success(res, { isAllowed: true, active: false }, 'Hàng đợi không bật cho sự kiện này.');
+  }
+
+  const isAllowed = await queueService.hasActiveSession(eventId, userId);
+  return ResponseFactory.success(
+    res,
+    { isAllowed, active: true },
+    isAllowed ? 'User có phiên giữ ghế hợp lệ.' : 'User không có phiên giữ ghế hợp lệ.'
+  );
+});
 exports.testJoinQueue = catchAsync(async (req, res) => {
   const { eventId } = req.params;
   

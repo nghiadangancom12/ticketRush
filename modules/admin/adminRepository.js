@@ -1,44 +1,43 @@
-const prisma = require('../../config/database');
+const prisma = require('../../config/database-analytics');
 
 class AdminRepository {
   async getGenderStats() {
-    return prisma.users.groupBy({
-      by: ['gender'],
+    return prisma.analytics_order_summary.groupBy({
+      by: ['user_gender'],
       _count: { _all: true },
-      where: { role: 'CUSTOMER' }
+      where: { order_status: 'PAID' }
     });
   }
 
   async getTopSpenders(limit = 5) {
-    return prisma.orders.groupBy({
+    return prisma.analytics_order_summary.groupBy({
       by: ['user_id'],
       _sum: { total_amount: true },
-      where: { status: 'PAID' },
+      where: { order_status: 'PAID' },
       orderBy: { _sum: { total_amount: 'desc' } },
       take: limit
     });
   }
 
   async getUserById(userId) {
-    return prisma.users.findUnique({ where: { id: userId } });
+    return prisma.analytics_order_summary.findFirst({ where: { user_id: userId } });
   }
 
   async getDemographicsByAge() {
     return prisma.$queryRaw`
       SELECT 
-        c.name AS category_name,
+        COALESCE(category_name, 'Uncategorized') AS category_name,
         CASE 
-          WHEN EXTRACT(YEAR FROM age(CURRENT_DATE, u.date_of_birth)) < 18 THEN '< 18'
-          WHEN EXTRACT(YEAR FROM age(CURRENT_DATE, u.date_of_birth)) BETWEEN 18 AND 24 THEN '18-24'
-          WHEN EXTRACT(YEAR FROM age(CURRENT_DATE, u.date_of_birth)) BETWEEN 25 AND 34 THEN '25-34'
-          WHEN EXTRACT(YEAR FROM age(CURRENT_DATE, u.date_of_birth)) BETWEEN 35 AND 44 THEN '35-44'
+          WHEN user_dob IS NULL THEN 'Unknown'
+          WHEN EXTRACT(YEAR FROM age(CURRENT_DATE, user_dob)) < 18 THEN '< 18'
+          WHEN EXTRACT(YEAR FROM age(CURRENT_DATE, user_dob)) BETWEEN 18 AND 24 THEN '18-24'
+          WHEN EXTRACT(YEAR FROM age(CURRENT_DATE, user_dob)) BETWEEN 25 AND 34 THEN '25-34'
+          WHEN EXTRACT(YEAR FROM age(CURRENT_DATE, user_dob)) BETWEEN 35 AND 44 THEN '35-44'
           ELSE '45+'
         END AS age_group,
-        COUNT(DISTINCT u.id)::int AS user_count
-      FROM categories c
-      JOIN events e ON e.category_id = c.id
-      JOIN orders o ON o.event_id = e.id AND o.status = 'PAID'
-      JOIN users u ON u.id = o.user_id
+        COUNT(DISTINCT user_id)::int AS user_count
+      FROM analytics_order_summary
+      WHERE order_status = 'PAID'
       GROUP BY category_name, age_group
       ORDER BY category_name, age_group
     `;
@@ -47,108 +46,89 @@ class AdminRepository {
   async getDemographicsByGender() {
     return prisma.$queryRaw`
       SELECT 
-        c.name AS category_name,
-        u.gender,
-        COUNT(DISTINCT u.id)::int AS user_count
-      FROM categories c
-      JOIN events e ON e.category_id = c.id
-      JOIN orders o ON o.event_id = e.id AND o.status = 'PAID'
-      JOIN users u ON u.id = o.user_id
-      GROUP BY category_name, u.gender
-      ORDER BY category_name, u.gender
+        COALESCE(category_name, 'Uncategorized') AS category_name,
+        COALESCE(user_gender::text, 'OTHER') AS gender,
+        COUNT(DISTINCT user_id)::int AS user_count
+      FROM analytics_order_summary
+      WHERE order_status = 'PAID'
+      GROUP BY category_name, user_gender
+      ORDER BY category_name, user_gender
     `;
   }
 
   async getDemographicsByBoth() {
     return prisma.$queryRaw`
       SELECT 
-        c.name AS category_name,
-        u.gender,
+        COALESCE(category_name, 'Uncategorized') AS category_name,
+        COALESCE(user_gender::text, 'OTHER') AS gender,
         CASE 
-          WHEN EXTRACT(YEAR FROM age(CURRENT_DATE, u.date_of_birth)) < 18 THEN '< 18'
-          WHEN EXTRACT(YEAR FROM age(CURRENT_DATE, u.date_of_birth)) BETWEEN 18 AND 24 THEN '18-24'
-          WHEN EXTRACT(YEAR FROM age(CURRENT_DATE, u.date_of_birth)) BETWEEN 25 AND 34 THEN '25-34'
-          WHEN EXTRACT(YEAR FROM age(CURRENT_DATE, u.date_of_birth)) BETWEEN 35 AND 44 THEN '35-44'
+          WHEN user_dob IS NULL THEN 'Unknown'
+          WHEN EXTRACT(YEAR FROM age(CURRENT_DATE, user_dob)) < 18 THEN '< 18'
+          WHEN EXTRACT(YEAR FROM age(CURRENT_DATE, user_dob)) BETWEEN 18 AND 24 THEN '18-24'
+          WHEN EXTRACT(YEAR FROM age(CURRENT_DATE, user_dob)) BETWEEN 25 AND 34 THEN '25-34'
+          WHEN EXTRACT(YEAR FROM age(CURRENT_DATE, user_dob)) BETWEEN 35 AND 44 THEN '35-44'
           ELSE '45+'
         END AS age_group,
-        COUNT(DISTINCT u.id)::int AS user_count
-      FROM categories c
-      JOIN events e ON e.category_id = c.id
-      JOIN orders o ON o.event_id = e.id AND o.status = 'PAID'
-      JOIN users u ON u.id = o.user_id
-      GROUP BY category_name, u.gender, age_group
-      ORDER BY category_name, u.gender, age_group
+        COUNT(DISTINCT user_id)::int AS user_count
+      FROM analytics_order_summary
+      WHERE order_status = 'PAID'
+      GROUP BY category_name, user_gender, age_group
+      ORDER BY category_name, user_gender, age_group
     `;
   }
 
   async getDashboardStats() {
-    const revenue = await prisma.orders.aggregate({
+    const revenue = await prisma.analytics_order_summary.aggregate({
       _sum: { total_amount: true },
-      where: { status: 'PAID' }
+      where: { order_status: 'PAID' }
     });
 
-    const seats = await Promise.all([
-      prisma.seats.count(),
-      prisma.seats.count({ where: { status: 'LOCKED' } }),
-      prisma.seats.count({ where: { status: 'SOLD' } }),
-      prisma.seats.count({ where: { status: 'AVAILABLE' } })
-    ]);
-
-    const usersCount = await prisma.users.count({
-      where: { role: 'CUSTOMER' }
+    const uniqueUsers = await prisma.analytics_order_summary.groupBy({
+      by: ['user_id'],
+      _count: { _all: true }
     });
 
     return {
       revenue: parseFloat(revenue._sum.total_amount || 0),
       seats: {
-        total: seats[0],
-        locked: seats[1],
-        sold: seats[2],
-        available: seats[3]
+        total: 0,
+        locked: 0,
+        sold: uniqueUsers.length,
+        available: 0
       },
-      usersTotal: usersCount
+      usersTotal: uniqueUsers.length
     };
   }
 
   async getEventAnalytics(eventId) {
-    const revenueQuery = await prisma.orders.aggregate({
+    const revenueQuery = await prisma.analytics_order_summary.aggregate({
       _sum: { total_amount: true },
       where: { 
         event_id: eventId,
-        status: 'PAID' 
+        order_status: 'PAID' 
       }
-    });
-
-    const seatStats = await prisma.seats.groupBy({
-      by: ['status'],
-      where: {
-        zones: {
-          event_id: eventId
-        }
-      },
-      _count: true
     });
 
     const demographics = await prisma.$queryRaw`
       SELECT 
-        u.gender,
+        COALESCE(user_gender::text, 'OTHER') AS gender,
         CASE 
-          WHEN EXTRACT(YEAR FROM age(CURRENT_DATE, u.date_of_birth)) < 18 THEN '< 18'
-          WHEN EXTRACT(YEAR FROM age(CURRENT_DATE, u.date_of_birth)) BETWEEN 18 AND 24 THEN '18-24'
-          WHEN EXTRACT(YEAR FROM age(CURRENT_DATE, u.date_of_birth)) BETWEEN 25 AND 34 THEN '25-34'
-          WHEN EXTRACT(YEAR FROM age(CURRENT_DATE, u.date_of_birth)) BETWEEN 35 AND 44 THEN '35-44'
+          WHEN user_dob IS NULL THEN 'Unknown'
+          WHEN EXTRACT(YEAR FROM age(CURRENT_DATE, user_dob)) < 18 THEN '< 18'
+          WHEN EXTRACT(YEAR FROM age(CURRENT_DATE, user_dob)) BETWEEN 18 AND 24 THEN '18-24'
+          WHEN EXTRACT(YEAR FROM age(CURRENT_DATE, user_dob)) BETWEEN 25 AND 34 THEN '25-34'
+          WHEN EXTRACT(YEAR FROM age(CURRENT_DATE, user_dob)) BETWEEN 35 AND 44 THEN '35-44'
           ELSE '45+'
         END AS age_group,
-        COUNT(DISTINCT u.id)::int AS user_count
-      FROM orders o
-      JOIN users u ON u.id = o.user_id
-      WHERE o.event_id = ${eventId}::uuid AND o.status = 'PAID'
-      GROUP BY u.gender, age_group
+        COUNT(DISTINCT user_id)::int AS user_count
+      FROM analytics_order_summary
+      WHERE event_id = ${eventId}::uuid AND order_status = 'PAID'
+      GROUP BY user_gender, age_group
     `;
 
     return {
       revenue: parseFloat(revenueQuery._sum.total_amount || 0),
-      seatStats,
+      seatStats: [],
       demographics
     };
   }

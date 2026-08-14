@@ -1,4 +1,4 @@
-const prisma = require('../../config/database');
+const prisma = require('../../config/database-auth');
 
 class CustomerRepository {
   async findById(userId) {
@@ -7,35 +7,7 @@ class CustomerRepository {
     });
   }
 
-  async getOrderHistory(userId) {
-    return prisma.orders.findMany({
-      where: { user_id: userId },
-      include: {
-        tickets: {
-          include: {
-            seats: {
-              include: {
-                zones: {
-                  include: { events: true }
-                }
-              }
-            }
-          }
-        }
-      },
-      orderBy: { created_at: 'desc' }
-    });
-  }
-
-  async getLockedSeats(userId) {
-    return prisma.seats.findMany({
-      where: { locked_by: userId, status: 'LOCKED' },
-      include: { zones: { include: { events: true } } }
-    });
-  }
-
   async update(userId, data) {
-    // Convert empty string to null for gender enum
     if (data.gender === '') {
       data.gender = null;
     }

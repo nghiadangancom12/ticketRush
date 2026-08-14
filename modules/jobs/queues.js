@@ -34,9 +34,10 @@ const seatReleaseQueue = redisDisabled
  * Producer: BookingService.checkout()
  * Consumer: emailWorker.js (concurrency: 4)
  */
+// ✅ Sửa lại: Truyền trực tiếp defaultQueueOptions tương tự như seatReleaseQueue
 const emailQueue = redisDisabled
   ? createNoopQueue('email-service')
-  : new Queue('email-service', { connection: defaultQueueOptions });
+  : new Queue('email-service', defaultQueueOptions);
 
 module.exports = {
   seatReleaseQueue,

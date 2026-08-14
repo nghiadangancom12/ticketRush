@@ -36,7 +36,7 @@ ticketRush/
 │   ├── categories/         # Danh mục sự kiện
 │   ├── customers/          # Thông tin khách hàng
 │   ├── admin/              # Dashboard quản trị
-│   ├── jobs/               # BullMQ Workers (email, nhả ghế)
+│   ├── jobs/               # Background Workers (email, nhả ghế, virtual queue)
 │   └── errorHandling/      # Xử lý lỗi toàn cục
 ├── prisma/
 │   ├── schema.prisma       # Schema database
@@ -200,10 +200,14 @@ docker compose up -d --build
 docker compose exec api npm run seed
 ```
 
-| Service | URL |
+| Service | URL / Trạng thái |
 |---------|-----|
-| Backend API | http://localhost:3000 |
-| API Docs | http://localhost:3000/api-docs |
+| Backend API (Core) | http://localhost:3000 |
+| Virtual Queue API Service | http://localhost:3001 |
+| Real-time Socket Gateway | http://localhost:3002 |
+| Virtual Queue Worker | Standalone Process (`worker-queue`) |
+| Email Worker | Standalone Process (`worker-email`) |
+| Seat Release Worker | Standalone Process (`worker-seat-release`) |
 | PostgreSQL | localhost:5432 |
 | Redis | localhost:6379 |
 

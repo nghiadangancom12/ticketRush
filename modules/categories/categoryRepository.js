@@ -1,4 +1,4 @@
-const prisma = require('../../config/database');
+const prisma = require('../../config/database-catalog');
 
 class CategoryRepository {
   async findAll(prismaArgs) {

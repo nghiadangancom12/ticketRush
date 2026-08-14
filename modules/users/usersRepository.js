@@ -1,4 +1,4 @@
-const prisma = require('../../config/database');
+const prisma = require('../../config/database-auth');
 
 class UserRepository {
   async findById(id) {
@@ -37,57 +37,6 @@ class UserRepository {
       prisma.users.count({ where: prismaArgs.where }),
     ]);
     return { data, total };
-  }
-
-  async getUserTickets(userId) {
-    const tickets = await prisma.tickets.findMany({
-      where: {
-        orders: {
-          user_id: userId,
-          status: 'PAID'
-        }
-      },
-      select: {
-        id: true,
-        qr_code: true,
-        status: true,
-        seats: {
-          select: {
-            seat_number: true,
-            row_label: true,
-            zones: {
-              select: {
-                events: {
-                  select: {
-                    id: true,
-                    title: true,
-                    start_time: true,
-                    location: true
-                  }
-                }
-              }
-            }
-          }
-        }
-      },
-      orderBy: {
-        issued_at: 'desc'
-      }
-    });
-
-    return tickets.map(t => ({
-      id: t.id,
-      qr_code: t.qr_code,
-      status: t.status,
-      seat_number: t.seats.seat_number,
-      row_label: t.seats.row_label,
-      event: {
-        id: t.seats.zones.events.id,
-        title: t.seats.zones.events.title,
-        start_time: t.seats.zones.events.start_time,
-        location: t.seats.zones.events.location
-      }
-    }));
   }
 
   /**

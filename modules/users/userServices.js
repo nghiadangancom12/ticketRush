@@ -2,6 +2,7 @@ const userRepository = require('./usersRepository');
 const AppError = require('../errorHandling/AppError');
 const PrismaApiFeatures = require('../../utils/PrismaApiFeatures');
 const bcrypt = require('bcrypt');
+const axios = require('axios');
 
 class UserService {
   
@@ -37,8 +38,30 @@ class UserService {
     return safeUser;
   }
 
-  async getMyTickets(userId) {
-    return userRepository.getUserTickets(userId);
+  /**
+   * API Composition: User Service gọi Booking Service sang /api/booking/my-tickets để lấy danh sách vé
+   */
+  async getMyTickets(userId, authHeader) {
+    const bookingServiceUrl = process.env.BOOKING_SERVICE_URL || 'http://localhost:3040';
+    try {
+      const headers = {};
+      if (authHeader) {
+        headers.Authorization = authHeader;
+      }
+
+      const response = await axios.get(`${bookingServiceUrl}/api/booking/my-tickets`, {
+        headers,
+        timeout: 1000,
+      });
+
+      return response.data?.data || [];
+    } catch (error) {
+      console.error(`[User Service -> Booking Service] Lỗi lấy danh sách vé cho user ${userId}:`, error.message);
+      if (error.response?.status && error.response.status < 500) {
+        throw new AppError(error.response.data?.message || 'Lỗi từ dịch vụ vé!', error.response.status);
+      }
+      throw new AppError('Danh sách vé đang được cập nhật, vui lòng thử lại sau ít phút!', 503);
+    }
   }
 
  async updateProfile(userId, data) {

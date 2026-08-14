@@ -34,7 +34,8 @@ exports.getMe = catchAsync(async (req, res) => {
 }); 
 
 exports.getMyTickets = catchAsync(async (req, res) => {
-  const tickets = await userService.getMyTickets(req.user.id);
+  const authHeader = req.headers.authorization;
+  const tickets = await userService.getMyTickets(req.user.id, authHeader);
   ResponseFactory.success(res, tickets, 'Lấy danh sách vé thành công');
 });
 

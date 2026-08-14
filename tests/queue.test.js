@@ -16,8 +16,9 @@ jest.mock('../middlewares/authMiddleware', () => ({
 }));
 
 const request = require('supertest');
-const app = require('../app');
+const app = require('../services/queue-service/app');
 const redis = require('../config/redis');
+
 
 
 // Bắt đầu nhóm kịch bản Test cho Queue

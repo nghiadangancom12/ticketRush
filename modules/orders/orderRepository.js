@@ -1,51 +1,29 @@
-const prisma = require('../../config/database');
+const prisma = require('../../config/database-booking');
 
-// Include mặc định: trả về đầy đủ thông tin liên quan đến order
+// Include mặc định trong booking_db: trả về tickets và seats (đã có snapshot zone_name, zone_price)
 const DEFAULT_INCLUDE = {
-  users: {
-    select: {
-      id: true,
-      email: true,
-      full_name: true,
-    },
-  },
-  // 🌟 MỚI: Lấy trực tiếp sự kiện từ orders (Không cần chui qua tickets nữa)
-  events: {
-    select: {
-      id: true,
-      title: true,
-      start_time: true,
-      location: true,
-    },
-  },
   tickets: {
     include: {
       seats: {
-        include: {
-          zones: {
-            select: {
-              name: true, // Vẫn giữ lại tên Zone để biết vé thuộc khu nào (VD: VIP, Standard)
-            },
-          },
-        },
-      },
-    },
-  },
+        select: {
+          id: true,
+          seat_number: true,
+          row_label: true,
+          zone_name: true,
+          zone_price: true
+        }
+      }
+    }
+  }
 };
 
 class OrderRepository {
   /**
    * Lấy danh sách orders với filter, sort, pagination từ PrismaApiFeatures.
-   * Hỗ trợ lọc thêm theo eventId cực kỳ nhanh nhờ Denormalization.
-   *
-   * @param {object} prismaArgs  - { where, orderBy, select, skip, take }
-   * @param {string} [eventId]   - Optional: lọc theo event cụ thể
-   * @returns {{ data: Order[], total: number }}
    */
   async findAll(prismaArgs, eventId) {
     let where = prismaArgs.where || {};
 
-    // 🌟 SỬA LẠI: Lọc trực tiếp bằng cột event_id siêu tốc độ (đã được đánh Index)
     if (eventId) {
       where = {
         ...where,

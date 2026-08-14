@@ -1,103 +1,35 @@
 require('dotenv').config();
 const http = require('http');
-const { Server: SocketIOServer } = require('socket.io');
 const app = require('./app');
 
-const redisEnabled = process.env.DISABLE_REDIS !== 'true';
-
-// ─── Khởi động BullMQ Workers ─────────────────────────────────────────────
-// Import workers để chúng tự động kết nối Redis và bắt đầu lắng nghe jobs.
-let queueWorker = null;
-if (redisEnabled) {
-  require('./modules/jobs/workers/seatReleaseWorker');
-  require('./modules/jobs/workers/emailWorker');
-
-  // 👇 1. IMPORT QUEUE WORKER MỚI
-  queueWorker = require('./modules/jobs/workers/queueWorker');
-} else {
-  console.log('⚠️  Redis bị tắt bằng DISABLE_REDIS=true, bỏ qua BullMQ workers.');
-}
-
-// ─── HTTP Server + Socket.IO ───────────────────────────────────────────────
+// ─── HTTP Server (Core API) ────────────────────────────────────────────────
 const server = http.createServer(app);
 
-const io = new SocketIOServer(server, {
-  cors: {
-    origin: process.env.FRONTEND_URL || 'http://localhost:5173',
-    methods: ['GET', 'POST'],
-    credentials: true,
-  },
-});
-
-// Gắn io vào app để các controller truy cập được
-app.set('io', io);
-
-io.on('connection', (socket) => {
-  console.log(`🔌 Socket kết nối: ${socket.id}`);
-
-  // Client join vào "phòng" của một event để nhận update ghế real-time
-  socket.on('joinEventRoom', (eventId) => {
-    socket.join(`event_${eventId}`);
-    console.log(`📡 Socket ${socket.id} đã vào phòng event_${eventId}`);
-  });
-
-  // 👇 2. BỔ SUNG: Client đăng ký phòng riêng (bằng userId) để nhận thông báo tới lượt
-  socket.on('join_queue', (userId) => {
-    socket.join(userId.toString());
-    console.log(`🧍 Socket ${socket.id} (User: ${userId}) đã sẵn sàng nhận thông báo Queue.`);
-  });
-
-  socket.on('disconnect', () => {
-    console.log(`🔌 Socket ngắt kết nối: ${socket.id}`);
-  });
-});
-
-// 👇 3. BƠM KẾT NỐI SOCKET + KHỞI ĐỘNG QUEUE WORKER
-if (queueWorker) {
-  queueWorker.setIO(io);
-  queueWorker.start();
-}
-
-// Subscribe Redis channel để forward sự kiện nhả ghế từ BullMQ worker → socket.io
-const redisSubscriber = require('./config/redisSubscriber');
-redisSubscriber.subscribe('seatStatusChanged', (err) => {
-  if (err) console.error('[Redis Subscriber] Subscribe thất bại:', err.message);
-  else console.log('🔔 [Redis Subscriber] Đang lắng nghe kênh seatStatusChanged...');
-});
-redisSubscriber.on('message', (channel, message) => {
-  if (channel !== 'seatStatusChanged') return;
-  try {
-    const payload = JSON.parse(message);
-    io.to(`event_${payload.eventId}`).emit('seatStatusChanged', payload);
-    console.log(`[Socket] 📡 Phát seatStatusChanged cho event_${payload.eventId}, ghế: [${payload.seats?.join(', ')}]`);
-  } catch (e) {
-    console.error('[Redis Subscriber] Parse payload thất bại:', e.message);
-  }
-});
-
-// ─── Start Server ──────────────────────────────────────────────────────────
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
-  console.log(`\n🚀 TicketRush server đang chạy tại http://localhost:${PORT}`);
+  console.log(`\n🚀 TicketRush Core API server đang chạy tại http://localhost:${PORT}`);
   console.log(`📚 API Docs: http://localhost:${PORT}/api-docs`);
-  console.log(`⚡ BullMQ Workers: seatReleaseWorker + emailWorker (concurrency: 4) đã khởi động`);
-  console.log(`🛡️  Virtual Queue Worker đã được kích hoạt!\n`);
+  console.log(`📡 Core API Endpoints Ready | Health: /health\n`);
 });
 
 // ─── Graceful Shutdown ─────────────────────────────────────────────────────
 process.on('unhandledRejection', (err) => {
   console.error('❌ Unhandled Rejection:', err.message);
-  // 👇 4. Tắt Queue Worker trước khi sập server
-  if (queueWorker) queueWorker.stop(); 
   server.close(() => process.exit(1));
 });
 
 process.on('SIGTERM', () => {
-  console.log('⚠️  SIGTERM nhận được. Đang tắt server...');
-  // 👇 4. Tắt Queue Worker trước khi tắt server
-  if (queueWorker) queueWorker.stop();
+  console.log('⚠️  SIGTERM nhận được. Đang tắt Core API server...');
   server.close(() => {
-    console.log('✅ Server đã tắt.');
+    console.log('✅ Core API Server đã tắt.');
     process.exit(0);
   });
 });
+
+process.on('SIGINT', () => {
+  console.log('⚠️  SIGINT nhận được. Đang tắt Core API server...');
+  server.close(() => {
+    console.log('✅ Core API Server đã tắt.');
+    process.exit(0);
+  });
+});
