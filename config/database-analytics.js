@@ -6,7 +6,8 @@ require('dotenv').config();
 class AnalyticsDatabase {
   constructor() {
     if (!AnalyticsDatabase.instance) {
-      const pool = new Pool({ connectionString: process.env.ANALYTICS_DATABASE_URL });
+      const analyticsUrl = process.env.ANALYTICS_DATABASE_URL || 'postgresql://user:password@localhost:5436/analytics_db';
+      const pool = new Pool({ connectionString: analyticsUrl });
       const adapter = new PrismaPg(pool);
 
       this.prisma = new PrismaClient({ adapter });

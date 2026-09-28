@@ -15,7 +15,8 @@ const FILTERED_OPERATIONS = new Set(['findMany', 'findFirst', 'findUnique', 'fin
 class CatalogDatabase {
   constructor() {
     if (!CatalogDatabase.instance) {
-      const pool = new Pool({ connectionString: process.env.CATALOG_DATABASE_URL });
+      const catalogUrl = process.env.CATALOG_DATABASE_URL || 'postgresql://user:password@localhost:5434/catalog_db';
+      const pool = new Pool({ connectionString: catalogUrl });
       const adapter = new PrismaPg(pool);
 
       const baseClient = new PrismaClient({ adapter });

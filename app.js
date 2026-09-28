@@ -97,8 +97,9 @@ app.use('/api/Booking',   require('./modules/Booking/BookingRoutes'));
 app.use('/api/booking',   require('./modules/Booking/BookingRoutes'));
 app.use('/api/orders',    require('./modules/orders/orderRoutes'));
 app.use('/api/customers', require('./modules/customers/customerRoutes'));
-app.use('/api/admin',      require('./modules/admin/AdminRoutes'));
+app.use('/api/admin',      require('./modules/admin/adminRoutes'));
 app.use('/api/categories', require('./modules/categories/categoryRoutes'));
+app.use('/api/queue',      require('./modules/queue/queueRoutes'));
 
 // 404 handler
 app.use((req, res, next) => {

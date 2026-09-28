@@ -51,7 +51,7 @@ class UserService {
 
       const response = await axios.get(`${bookingServiceUrl}/api/booking/my-tickets`, {
         headers,
-        timeout: 1000,
+        timeout: 5000,
       });
 
       return response.data?.data || [];

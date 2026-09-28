@@ -15,7 +15,8 @@ const FILTERED_OPERATIONS = new Set(['findMany', 'findFirst', 'findUnique', 'fin
 class AuthDatabase {
   constructor() {
     if (!AuthDatabase.instance) {
-      const pool = new Pool({ connectionString: process.env.AUTH_DATABASE_URL });
+      const authUrl = process.env.AUTH_DATABASE_URL || 'postgresql://user:password@localhost:5433/auth_db';
+      const pool = new Pool({ connectionString: authUrl });
       const adapter = new PrismaPg(pool);
 
       const baseClient = new PrismaClient({ adapter });

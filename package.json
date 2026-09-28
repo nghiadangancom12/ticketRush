@@ -45,6 +45,7 @@
     "start:booking-service": "node services/booking-service/server.js",
     "start:user-service": "node services/user-service/server.js",
     "start:socket-gateway": "node services/socket-gateway/server.js",
+    "frontend:dev": "npm --prefix frontend run dev",
     "test": "jest --detectOpenHandles",
     "seed": "node prisma/seed.js",
     "seed:k6": "node prisma/seed-k6.js",

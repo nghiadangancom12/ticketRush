@@ -32,10 +32,29 @@ export default function EventDetailPage() {
 
   const fetchEvent = async () => {
     try {
-      const res = await axios.get(`${API}/events/${id}`, {
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
-      });
-      setEventData(res.data.data);
+      const [eventRes, seatMapRes] = await Promise.allSettled([
+        axios.get(`${API}/events/${id}`, { headers: token ? { Authorization: `Bearer ${token}` } : {} }),
+        axios.get(`${API}/booking/event/${id}/seats`, { headers: token ? { Authorization: `Bearer ${token}` } : {} })
+      ]);
+
+      if (eventRes.status === 'rejected' && eventRes.reason?.response?.status === 403) {
+        setNotAllowed(true);
+        return;
+      }
+      if (seatMapRes.status === 'rejected' && seatMapRes.reason?.response?.status === 403) {
+        setNotAllowed(true);
+        return;
+      }
+
+      const eventInfo = eventRes.status === 'fulfilled' ? eventRes.value.data.data : null;
+      const seatMapInfo = seatMapRes.status === 'fulfilled' ? seatMapRes.value.data.data : null;
+
+      if (eventInfo) {
+        setEventData({
+          ...eventInfo,
+          zones: seatMapInfo?.zones && seatMapInfo.zones.length > 0 ? seatMapInfo.zones : (eventInfo.zones || [])
+        });
+      }
     } catch (err) {
       if (err.response?.status === 403) setNotAllowed(true);
     } finally {

@@ -25,7 +25,7 @@ class CustomerService {
 
       const response = await axios.get(`${bookingServiceUrl}/api/booking/purchase-history`, {
         headers,
-        timeout: 1000,
+        timeout: 5000,
       });
 
       return response.data?.data || [];
@@ -49,7 +49,7 @@ class CustomerService {
 
       const response = await axios.get(`${bookingServiceUrl}/api/booking/locked-seats`, {
         headers,
-        timeout: 1000,
+        timeout: 5000,
       });
 
       return response.data?.data || [];

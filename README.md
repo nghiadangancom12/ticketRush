@@ -1,306 +1,198 @@
-# 🎟️ TicketRush
+# 🎟️ TicketRush — Hệ Thống Phân Phối Vé Sự Kiện & Quản Lý Đặt Chỗ Thời Gian Thực
 
-**TicketRush** là hệ thống đặt vé sự kiện trực tuyến với kiến trúc full-stack hiện đại, hỗ trợ đặt vé real-time, hàng đợi ảo (Virtual Queue), và thanh toán mượt mà.
-
----
-
-## 🏗️ Tech Stack
-
-| Layer | Công nghệ |
-|-------|-----------|
-| **Backend** | Node.js, Express v5 |
-| **Frontend** | React 19, Vite, React Router v7 |
-| **Database** | PostgreSQL 16 (via Prisma ORM) |
-| **Cache / Queue** | Redis 7, BullMQ |
-| **Real-time** | Socket.IO |
-| **Auth** | JWT (cookie-based) |
-| **API Docs** | Swagger UI (`/api-docs`) |
-| **Containerization** | Docker, Docker Compose |
+**TicketRush** là hệ thống phân phối vé sự kiện kiến trúc **Microservices (Database-per-Service)** được thiết kế chịu tải cực cao (Ticket Rush Flash Sale) với chiến lược **Proactive Read-Model CQRS**, **Virtual Queue (Lua Script)** và **Real-time Event-Driven Architecture**.
 
 ---
 
-## 📁 Cấu trúc thư mục
+## 🏛️ Kiến Trúc Hệ Thống (Architecture Overview)
 
 ```
-ticketRush/
-├── app.js                  # Express app (middleware, routes)
-├── server.js               # Entry point (HTTP server, Socket.IO, BullMQ)
-├── config/                 # Kết nối database, Redis
-├── modules/                # Các module nghiệp vụ (Clean Architecture)
-│   ├── auth/               # Đăng nhập, đăng ký, JWT
-│   ├── users/              # Quản lý người dùng
-│   ├── events/             # Quản lý sự kiện
-│   ├── Booking/            # Đặt vé, khóa ghế
-│   ├── orders/             # Quản lý đơn hàng
-│   ├── queue/              # Hàng đợi ảo (Virtual Queue)
-│   ├── categories/         # Danh mục sự kiện
-│   ├── customers/          # Thông tin khách hàng
-│   ├── admin/              # Dashboard quản trị
-│   ├── jobs/               # Background Workers (email, nhả ghế, virtual queue)
-│   └── errorHandling/      # Xử lý lỗi toàn cục
-├── prisma/
-│   ├── schema.prisma       # Schema database
-│   ├── seed.js             # Dữ liệu mẫu
-│   └── migrations/         # Lịch sử migrations
-├── frontend/               # React app (Vite)
-│   └── src/
-│       └── pages/          # HomePage, EventDetailPage, CheckoutPage, AdminPage...
-├── public/                 # Static files (ảnh upload)
-├── swagger.yaml            # API documentation
-├── docker-compose.yml      # Stack: Postgres + Redis + API + Workers
-├── Dockerfile
-└── .env.example            # Mẫu biến môi trường
+                       ┌──────────────────────────────┐
+                       │  Kong API Gateway (:8000)    │
+                       └──────────────┬───────────────┘
+                                      │
+         ┌───────────────┬────────────┼───────────────┬───────────────┐
+         ▼               ▼            ▼               ▼               ▼
+ ┌──────────────┐ ┌────────────┐ ┌───────────┐ ┌─────────────┐ ┌──────────────┐
+ │ Auth Service │ │User Service│ │  Catalog  │ │ Booking Svc │ │ Queue Service│
+ │   (:3010)    │ │  (:3020)   │ │  (:3030)  │ │   (:3040)   │ │   (:3001)    │
+ └───────┬──────┘ └─────┬──────┘ └─────┬─────┘ └──────┬──────┘ └──────┬───────┘
+         │              │              │              │               │
+         ▼              ▼              ▼              ▼               │
+  ┌──────────────┐ ┌──────────┐ ┌─────────────┐ ┌─────────────┐       │
+  │   auth_db    │ │ auth_db  │ │ catalog_db  │ │ booking_db  │       │
+  │   (:5433)    │ │ (:5433)  │ │   (:5434)   │ │   (:5435)   │       │
+  └──────────────┘ └──────────┘ └─────────────┘ └──────┬──────┘       │
+                                                       │              │
+ ┌─────────────────────────────────────────────────────┼──────────────┴──────┐
+ │                            Redis Server (:6379)                           │
+ │  - CQRS Read Models (cache:seatmap, cache:events)                         │
+ │  - Virtual Queue State (Sorted Sets + Lua Scripts)                        │
+ │  - BullMQ Queues (email, seat-release)                                    │
+ │  - Pub/Sub Channel Catalog                                                │
+ └─────────────────────────┬─────────────────────────────────────────────────┘
+                           │
+          ┌────────────────┼────────────────┬────────────────┐
+          ▼                ▼                ▼                ▼
+   ┌─────────────┐  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐
+   │Worker Queue │  │Worker Email │  │Worker Release│  │ Worker Sync │
+   └─────────────┘  └─────────────┘  └─────────────┘  └──────┬──────┘
+                                                             │
+                                                             ▼
+                                                    ┌─────────────────┐
+                                                    │  analytics_db   │
+                                                    │     (:5436)     │
+                                                    └─────────────────┘
 ```
 
 ---
 
-## ⚙️ Yêu cầu hệ thống
+## 📦 Cấu Trúc Microservices & Single Responsibility
 
-Trước khi bắt đầu, hãy đảm bảo đã cài đặt:
-
-| Phần mềm | Phiên bản tối thiểu |
-|----------|---------------------|
-| [Node.js](https://nodejs.org/) | v20+ |
-| [Docker Desktop](https://www.docker.com/products/docker-desktop/) | v24+ |
-| [Git](https://git-scm.com/) | Bất kỳ |
-
-> **Lưu ý:** PostgreSQL và Redis **không cần cài trực tiếp** — Docker sẽ lo phần đó.
-
----
-
-## 🚀 Hướng dẫn chạy project (Local Development)
-
-### Bước 1 — Clone repository
-
-```bash
-git clone https://github.com/<your-username>/ticketRush.git
-cd ticketRush
-```
+| Service / Container | Port | Description | Dockerfile Path |
+|---|---|---|---|
+| **Kong API Gateway** | `:8000` / `:8001` | Routing, Rate-limiting, JWT Verify, CORS, WS Upgrade | Official `kong:3.6-alpine` |
+| **Auth Service** | `:3010` | Đăng ký, đăng nhập, cấp và xác thực JWT token | [`services/auth-service/Dockerfile`](file:///c:/ticketRush/services/auth-service/Dockerfile) |
+| **User Service** | `:3020` | Quản lý Profile cá nhân, API Composition lấy vé | [`services/user-service/Dockerfile`](file:///c:/ticketRush/services/user-service/Dockerfile) |
+| **Event Catalog Service** | `:3030` | Catalog sự kiện, danh mục, CQRS Read/Write model | [`services/event-catalog-service/Dockerfile`](file:///c:/ticketRush/services/event-catalog-service/Dockerfile) |
+| **Booking Service** | `:3040` | Giữ ghế (SP), Thanh toán, Trả ghế, CQRS Seatmap | [`services/booking-service/Dockerfile`](file:///c:/ticketRush/services/booking-service/Dockerfile) |
+| **Virtual Queue Service** | `:3001` | Hàng chờ ảo (Virtual Queue) xử lý bằng Lua Script | [`services/queue-service/Dockerfile`](file:///c:/ticketRush/services/queue-service/Dockerfile) |
+| **Socket Gateway** | `:3002` | Real-time WebSocket Gateway (Socket.io) | [`services/socket-gateway/Dockerfile`](file:///c:/ticketRush/services/socket-gateway/Dockerfile) |
+| **Worker Analytics Sync** | Background | Đồng bộ dữ liệu sự kiện thanh toán về `analytics_db` | Integrated Worker |
+| **Worker Seat Release** | Background | Tự động nhả ghế sau 60s timeout | BullMQ Worker |
+| **Worker Email** | Background | Gửi email đính kèm QR Code vé điện tử | BullMQ Worker |
 
 ---
 
-### Bước 2 — Tạo file `.env`
+## 🗄️ Kiến Trúc Database-per-Service (4 PostgreSQL Instances)
 
-Sao chép file mẫu và điền thông tin:
+1. **`auth_db` (Port `:5433`)**:
+   - Bảng `users`: Thông tin định danh, mật khẩu băm, role.
+2. **`catalog_db` (Port `:5434`)**:
+   - Bảng `events`, `categories`, `zones`: Quản lý danh mục và thông tin sự kiện.
+3. **`booking_db` (Port `:5435`)**:
+   - Bảng `seats` (denormalized: `zone_name`, `zone_price`, `event_id`).
+   - Bảng `orders` (snapshot: `event_title`, `category_name`, `user_email`).
+   - Bảng `tickets`: QR code vé điện tử.
+   - **Stored Procedure**: `hold_seats_procedure` chống race condition giữ ghế.
+4. **`analytics_db` (Port `:5436`)**:
+   - Bảng `analytics_order_summary`: Materialized view tổng hợp dữ liệu phục vụ Admin Dashboard qua Pub/Sub sync.
+
+---
+
+## 🚀 Hướng Dẫn Khởi Chạy (Step-by-Step Run Guide)
+
+### 1. Chuẩn bị File Cấu Hình `.env`
+
+Tạo file `.env` tại thư mục gốc dự án (hoặc copy từ `.env.example`):
 
 ```bash
 cp .env.example .env
 ```
 
-Mở file `.env` và chỉnh sửa các giá trị sau (quan trọng nhất):
+Nội dung cấu hình cơ bản cho Docker Local:
 
 ```env
-# 🗄️ Database — khớp với docker-compose.yml
-DATABASE_URL=postgresql://user:password@localhost:5432/ticketrush
-
-# 🔴 Redis
-REDIS_URL=redis://localhost:6379
-
-# 🔑 JWT — thay bằng chuỗi bí mật của bạn
-JWT_SECRET=your_super_secret_jwt_key_change_in_production
-JWT_COOKIE_EXPIRES_IN=1
-
-# 🌐 URLs (giữ nguyên khi chạy local)
-FRONTEND_URL=http://localhost:5173
-BACKEND_URL=http://localhost:3000
 NODE_ENV=development
-```
+FRONTEND_URL=http://localhost:5173
+JWT_SECRET=ticketrush_super_secret_jwt_key_2026
 
-> **Email (tùy chọn):** Nếu muốn gửi email xác nhận, điền thêm `EMAIL_USER` và `EMAIL_PASS` (Gmail App Password).
-
----
-
-### Bước 3 — Khởi động Docker (Database + Redis)
-
-```bash
-docker compose up -d postgres redis
-```
-
-Kiểm tra container đã chạy:
-
-```bash
-docker compose ps
-```
-
-Chờ đến khi cột `Status` hiện `healthy` cho service `postgres`.
-
----
-
-### Bước 4 — Cài dependencies & khởi tạo Database
-
-```bash
-# Cài dependencies cho backend
-npm install
-
-# Tạo bảng trong database (chạy migrations)
-npx prisma migrate deploy
-
-# (Tùy chọn) Seed dữ liệu mẫu vào database
-npm run seed
-```
-
-> `npm run seed` sẽ tạo sẵn tài khoản admin, sự kiện mẫu, ghế ngồi, và danh mục để test.
-
----
-
-### Bước 5 — Chạy Backend
-
-```bash
-# Chạy với nodemon (tự reload khi thay code)
-nodemon server.js
-```
-
-Hoặc dùng script có sẵn:
-
-```bash
-npm run start:dev
-```
-
-Backend sẽ chạy tại: **http://localhost:3000**  
-API Docs (Swagger): **http://localhost:3000/api-docs**
-
----
-
-### Bước 6 — Chạy Frontend
-
-Mở terminal mới:
-
-```bash
-cd frontend
-npm install
-npm run dev
-```
-
-Frontend sẽ chạy tại: **http://localhost:5173**
-
----
-
-## 🔑 Tài khoản mặc định (sau khi seed)
-
-Sau khi chạy `npm run seed`, bạn có thể đăng nhập bằng:
-
-| Role | Email | Password |
-|------|-------|----------|
-| **Admin** | `admin@ticketrush.com` | `Admin123!` |
-| **Customer** | `customer@ticketrush.com` | `Customer123!` |
-
-> Xem file `prisma/seed.js` để biết thêm tài khoản mẫu.
-
----
-
-## 🐳 Chạy toàn bộ stack bằng Docker Compose
-
-Nếu muốn chạy **tất cả services** (API + Workers + DB + Redis) bằng Docker:
-
-```bash
-# Build và khởi động toàn bộ stack
-docker compose up -d --build
-
-# Seed dữ liệu mẫu vào container
-docker compose exec api npm run seed
-```
-
-| Service | URL / Trạng thái |
-|---------|-----|
-| Backend API (Core) | http://localhost:3000 |
-| Virtual Queue API Service | http://localhost:3001 |
-| Real-time Socket Gateway | http://localhost:3002 |
-| Virtual Queue Worker | Standalone Process (`worker-queue`) |
-| Email Worker | Standalone Process (`worker-email`) |
-| Seat Release Worker | Standalone Process (`worker-seat-release`) |
-| PostgreSQL | localhost:5432 |
-| Redis | localhost:6379 |
-
-> **Frontend không có trong `docker-compose.yml`** — vẫn chạy thủ công bằng `npm run dev` trong thư mục `frontend/`.
-
----
-
-## 🧪 Chạy Tests
-
-```bash
-# Unit tests (Jest)
-npm test
-
-# Load testing với k6 (cần cài k6 riêng: https://k6.io/docs/get-started/installation/)
-npm run seed:k6              # Seed dữ liệu cho k6
-npm run k6:stack:up          # Khởi động stack k6
-
-npm run k6:seat              # Test tranh ghế đồng thời
-npm run k6:queue             # Test hàng đợi ảo
-npm run k6:mixed             # Test end-to-end hỗn hợp
-npm run k6:stress            # Stress test
+# Database URLs cho Docker Compose
+AUTH_DATABASE_URL=postgresql://user:password@postgres-auth:5432/auth_db
+CATALOG_DATABASE_URL=postgresql://user:password@postgres-catalog:5432/catalog_db
+BOOKING_DATABASE_URL=postgresql://user:password@postgres-booking:5432/booking_db
+ANALYTICS_DATABASE_URL=postgresql://user:password@postgres-analytics:5432/analytics_db
+REDIS_URL=redis://redis:6379
 ```
 
 ---
 
-## 📡 API Endpoints chính
+### 2. Chạy Hệ Thống Bằng Docker Compose
 
-| Method | Endpoint | Mô tả |
-|--------|----------|-------|
-| `POST` | `/api/auth/signup` | Đăng ký tài khoản |
-| `POST` | `/api/auth/login` | Đăng nhập |
-| `GET` | `/api/events` | Danh sách sự kiện |
-| `GET` | `/api/events/:id` | Chi tiết sự kiện |
-| `POST` | `/api/booking` | Khóa ghế (đặt vé) |
-| `POST` | `/api/orders` | Tạo đơn hàng |
-| `GET` | `/api/users/me/tickets` | Vé của tôi |
-| `GET` | `/api/queue/status` | Trạng thái hàng đợi |
-
-📖 Xem đầy đủ tại: **http://localhost:3000/api-docs**
-
----
-
-## 🔧 Các lệnh hữu ích
+Khởi chạy toàn bộ 4 PostgreSQL Databases, Redis, Kong Gateway, 6 Microservices và 4 Workers bằng duy nhất 1 lệnh:
 
 ```bash
-# Xem log database trực tiếp
-npx prisma studio
+docker-compose up -d --build
+```
 
-# Reset database (xóa sạch + migrate lại)
-npx prisma migrate reset
+Kiểm tra trạng thái chạy của tất cả các container:
 
-# Tạo migration mới khi thay đổi schema
-npx prisma migrate dev --name <tên_migration>
-
-# Xem log Docker
-docker compose logs -f api
-
-# Dừng toàn bộ Docker containers
-docker compose down
+```bash
+docker-compose ps
 ```
 
 ---
 
-## ❓ Xử lý lỗi thường gặp
+### 3. Thực Thi Data Migration & Khởi Tạo Stored Procedure
 
-### Lỗi: `Can't reach database server at localhost:5432`
-→ Docker chưa chạy hoặc PostgreSQL chưa khởi động xong.  
-Chạy: `docker compose up -d postgres` và chờ vài giây.
+Chạy script migration tự động để nạp schema cho cả 4 database và đăng ký Stored Procedure `hold_seats_procedure` trên `booking_db`:
 
-### Lỗi: `Redis connection refused`
-→ Redis chưa chạy.  
-Chạy: `docker compose up -d redis`
-
-### Lỗi: `Environment variable not found: DATABASE_URL`
-→ Bạn chưa tạo file `.env`.  
-Chạy: `cp .env.example .env`
-
-### Lỗi: `Table doesn't exist` / Prisma migration errors
-→ Chạy lại migration:  
 ```bash
-npx prisma migrate deploy
+node scripts/migrate-db-per-service.js
 ```
 
-### Port 3000 hoặc 5173 đã bị chiếm
-→ Kiểm tra và kill process đang dùng port:
+Hoặc nạp dữ liệu mẫu cho kiểm thử:
+
 ```bash
-# Windows
-netstat -aon | findstr :3000
-taskkill /PID <PID> /F
+node prisma/seed.js
 ```
 
 ---
 
-## 📄 License
+### 4. Chạy Kiểm Thử Tự Động (Integration Tests)
 
-MIT © TicketRush Team
+Thực thi bộ test tích hợp toàn diện kiến trúc Microservices & CQRS & Database-per-Service:
+
+```bash
+npx jest tests/microservices.test.js
+```
+
+---
+
+## 📘 Tài Liệu OpenAPI / Swagger API Docs
+
+Hệ thống đã tích hợp đầy đủ giao diện **Swagger UI** giúp trải nghiệm và test API trực quan.
+
+### 🌐 Cách Truy Cập:
+
+- **Swagger UI (Core Proxy)**: `http://localhost:3000/api-docs`
+- **Kong Gateway Proxy**: `http://localhost:8000/api-docs`
+- **File Cấu Hình OpenAPI Specs**: [swagger.yaml](file:///c:/ticketRush/swagger.yaml)
+
+### 📌 Các API Groups Trong Swagger:
+
+1. **Authentication (`/api/auth`)**:
+   - `POST /api/auth/register` — Đăng ký tài khoản
+   - `POST /api/auth/login` — Đăng nhập (nhận JWT Cookie / Bearer Token)
+   - `GET /api/auth/verify` — Endpoint xác thực nội bộ giữa các service
+2. **Events Catalog (`/api/events`)**:
+   - `GET /api/events` — Lấy danh sách sự kiện từ Redis Read Model
+   - `GET /api/events/:id/landing` — Lấy thông tin Landing Page sự kiện
+   - `POST /api/events` — Admin tạo sự kiện & tự động provision seats sang `booking_db`
+3. **Booking & Orders (`/api/booking`)**:
+   - `GET /api/booking/event/:eventId/seats` — Đọc sơ đồ ghế từ Redis Read Model (CQRS)
+   - `POST /api/booking/hold` — Giữ ghế thời gian thực bằng Stored Procedure
+   - `POST /api/booking/checkout` — Thanh toán & xuất vé điện tử kèm QR
+   - `POST /api/booking/return` — Trả ghế giải phóng lượt
+   - `GET /api/booking/my-tickets` — API Composition chống IDOR
+4. **Virtual Queue (`/api/queue`)**:
+   - `POST /api/queue/:eventId/join` — Đăng ký xếp hàng mua vé
+   - `POST /api/queue/:eventId/heartbeat` — Gửi nhịp tim duy trì vị trí hàng chờ
+5. **Admin Analytics (`/api/admin`)**:
+   - `GET /api/admin/dashboard` — Thống kê tổng quan từ `analytics_db`
+   - `GET /api/admin/customer-analytics` — Thống kê nhân khẩu học người mua
+
+---
+
+## 🛠️ Lệnh Bảo Trì Thường Dùng (Useful Commands)
+
+```bash
+# Xem log thời gian thực của booking service
+docker-compose logs -f booking-service
+
+# Xem log của worker xử lý nhả ghế
+docker-compose logs -f worker-seat-release
+
+# Khai tử & dọn dẹp toàn bộ container + volumes
+docker-compose down -v
+```

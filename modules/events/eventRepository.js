@@ -16,11 +16,8 @@ class EventRepository {
     return prisma.events.findUnique({
       where: { id },
       include: {
-        zones: {
-          include: {
-            seats: { orderBy: [{ row_label: 'asc' }, { seat_number: 'asc' }] }
-          }
-        }
+        categories: true,
+        zones: { select: { id: true, name: true, price: true, total_seats: true } }
       }
     });
   }
@@ -53,22 +50,14 @@ class EventRepository {
     });
   }
 
-  async createManySeats(seatsData) {
-    if (seatsData.length === 0) return [];
-    return prisma.seats.createMany({ data: seatsData });
-  }
-
   async createFullEvent(eventDataPayload) {
-    // Prisma tự động chạy cái này dưới dạng Transaction (All or Nothing)
     return prisma.events.create({
       data: eventDataPayload
     });
   }
 
   /**
-   * Soft Delete Event: Đổi status → 'DELETED' thay vì xóa hàng thật.
-   * Global filter trong database.js sẽ tự ẩn record này khỏi mọi query read.
-   * Dùng prisma.$queryRaw bypass để update ngay cả khi extension filter đang chạy.
+   * Soft Delete Event: Đổi status → 'DELETED'
    */
   async softDelete(id) {
     return prisma.events.update({

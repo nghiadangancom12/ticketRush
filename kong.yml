@@ -2,9 +2,9 @@ _format_version: "3.0"
 _transform: true
 
 services:
-  # 1. Auth Service (:3010)
-  - name: auth-service
-    url: http://auth-service:3010
+  # ─── 1. IAM Service — Authentication, Identity & Access Management (:3010) ──
+  - name: iam-service
+    url: http://iam-service:3010
     routes:
       - name: auth-route
         paths:
@@ -13,10 +13,31 @@ services:
     plugins:
       - name: rate-limiting
         config:
-          minute: 60
+          minute: 30        # Strict — chống brute-force login
           policy: local
 
-  # 2. Event Catalog Service (:3030)
+      - name: rate-limiting
+        config:
+          minute: 30
+          policy: local
+        tags:
+          - auth
+
+  - name: iam-users-route
+    url: http://iam-service:3010
+    routes:
+      - name: users-route
+        paths:
+          - /api/users
+          - /api/customers
+        strip_path: false
+    plugins:
+      - name: rate-limiting
+        config:
+          minute: 120
+          policy: local
+
+  # ─── 2. Event Catalog Service (:3030) ────────────────────────────────────────
   - name: event-catalog-service
     url: http://event-catalog-service:3030
     routes:
@@ -32,7 +53,7 @@ services:
           minute: 500
           policy: local
 
-  # 3. Booking & Order Service (:3040)
+  # ─── 3. Booking Service (:3040) ──────────────────────────────────────────────
   - name: booking-service
     url: http://booking-service:3040
     routes:
@@ -45,25 +66,10 @@ services:
     plugins:
       - name: rate-limiting
         config:
-          minute: 30
+          minute: 30        # Strict — booking là critical path
           policy: local
 
-  # 4. User & Customer Service (:3020)
-  - name: user-service
-    url: http://user-service:3020
-    routes:
-      - name: user-route
-        paths:
-          - /api/users
-          - /api/customers
-        strip_path: false
-    plugins:
-      - name: rate-limiting
-        config:
-          minute: 120
-          policy: local
-
-  # 5. Virtual Queue Service (:3001)
+  # ─── 4. Virtual Queue Service (:3001) ────────────────────────────────────────
   - name: virtual-queue-service
     url: http://virtual-queue-service:3001
     routes:
@@ -77,7 +83,7 @@ services:
           minute: 200
           policy: local
 
-  # 6. Realtime WebSocket Gateway (:3002) - Cấu hình giao thức ws và wss
+  # ─── 5. Realtime WebSocket Gateway (:3002) ───────────────────────────────────
   - name: socket-gateway
     url: http://realtime-socket-gateway:3002
     routes:
@@ -91,7 +97,7 @@ services:
           - wss
         strip_path: false
 
-  # 7. Core API Monolith Fallback (:3000)
+  # ─── 6. Core API Monolith Fallback (:3000) — Strangler Fig Pattern ──────────
   - name: core-api
     url: http://api:3000
     routes:
@@ -101,12 +107,16 @@ services:
         strip_path: false
 
 plugins:
-  # Global CORS Plugin
+  # ─── Global CORS Plugin ───────────────────────────────────────────────────────
+  # ⚠️  KHÔNG dùng wildcard "*" khi credentials: true (trình duyệt sẽ block).
+  # Thêm domain production vào origins khi deploy lên server thật.
   - name: cors
     config:
       origins:
         - "http://localhost:5173"
-        - "*"
+        - "http://localhost:3000"
+        # Thêm production URL ở đây khi deploy:
+        # - "https://yourdomain.com"
       methods:
         - GET
         - POST
@@ -120,8 +130,15 @@ plugins:
         - Content-Length
         - Content-Type
         - Authorization
+      exposed_headers:
+        - X-Auth-Token
       credentials: true
       max_age: 3600
 
-  # Global Prometheus Observability Plugin
+  # ─── Global Prometheus Observability ─────────────────────────────────────────
   - name: prometheus
+    config:
+      status_code_metrics: true
+      latency_metrics: true
+      bandwidth_metrics: true
+      upstream_health_metrics: true

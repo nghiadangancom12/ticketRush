@@ -6,7 +6,8 @@ require('dotenv').config();
 class BookingDatabase {
   constructor() {
     if (!BookingDatabase.instance) {
-      const pool = new Pool({ connectionString: process.env.BOOKING_DATABASE_URL });
+      const bookingUrl = process.env.BOOKING_DATABASE_URL || 'postgresql://user:password@localhost:5435/booking_db';
+      const pool = new Pool({ connectionString: bookingUrl });
       const adapter = new PrismaPg(pool);
 
       this.prisma = new PrismaClient({ adapter });
